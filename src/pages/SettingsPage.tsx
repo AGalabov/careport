@@ -27,6 +27,8 @@ export default function SettingsPage() {
   );
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState('');
+  const [importDate, setImportDate] = useState(`${new Date().getFullYear()}-01-01`);
+  const [importFuelType, setImportFuelType] = useState<'lpg' | 'petrol'>('lpg');
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function handleEnableNotifications() {
@@ -59,30 +61,24 @@ export default function SettingsPage() {
       const text = await file.text();
       const rows = parseCSV(text);
       const firstCell = rows[0][0].toLowerCase();
-      const dataRows = firstCell.includes('date') || firstCell.includes('km') || firstCell.includes('odo')
-        ? rows.slice(1)
-        : rows;
+      const dataRows = isNaN(Number(firstCell)) ? rows.slice(1) : rows;
+      const date = new Date(importDate);
 
       let imported = 0;
       let skipped = 0;
       for (const row of dataRows) {
-        // Columns: date, odometer, fuel_type, liters, price_lpg, price_petrol, [total_cost], [notes]
-        const [dateStr, odoStr, fuelTypeRaw, litersStr, priceLpgStr, pricePetrolStr, , notes] = row;
+        // Columns: odometer, liters, price_lpg, price_petrol, [notes]
+        const [odoStr, litersStr, priceLpgStr, pricePetrolStr, notes] = row;
         const odometer = Number(odoStr);
         const liters = Number(litersStr);
         const priceLpg = Number(priceLpgStr);
         const pricePetrol = Number(pricePetrolStr);
-        const fuelType = fuelTypeRaw?.toLowerCase().trim() === 'petrol' ? 'petrol' : 'lpg';
-
-        // Date is optional — default to Jan 1 of current year if missing/invalid
-        let date = new Date(dateStr);
-        if (isNaN(date.getTime())) date = new Date(`${new Date().getFullYear()}-01-01`);
 
         if (isNaN(odometer) || isNaN(liters) || liters <= 0 || isNaN(priceLpg) || isNaN(pricePetrol)) {
           skipped++;
           continue;
         }
-        await addRecord({ date, odometer, fuelType, liters, priceLpg, pricePetrol, notes: notes?.trim() });
+        await addRecord({ date, odometer, fuelType: importFuelType, liters, priceLpg, pricePetrol, notes: notes?.trim() });
         imported++;
       }
       setImportResult(`Imported ${imported} records${skipped > 0 ? `, skipped ${skipped} invalid rows` : ''}.`);
@@ -202,27 +198,63 @@ export default function SettingsPage() {
               </div>
             </button>
 
-            <label className="w-full flex items-center gap-3 p-4 text-left hover:bg-gray-50 cursor-pointer transition-colors">
-              <Upload size={16} className="text-indigo-600" />
-              <div>
+            <div className="p-4 space-y-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Upload size={16} className="text-indigo-600" />
                 <p className="text-sm font-medium text-gray-900">Import from CSV</p>
-                <p className="text-xs text-gray-400">
-                  Columns: date, odometer, fuel_type, liters, price_lpg, price_petrol, …
-                </p>
               </div>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".csv"
-                className="hidden"
-                onChange={handleImport}
-                disabled={importing}
-              />
-            </label>
+              <p className="text-xs text-gray-400">
+                CSV columns: odometer, liters, price_lpg, price_petrol, notes (optional)
+              </p>
 
-            {importResult && (
-              <div className="px-4 py-2 text-xs text-gray-600 bg-gray-50">{importResult}</div>
-            )}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Date for all records</label>
+                  <input
+                    type="date"
+                    value={importDate}
+                    onChange={(e) => setImportDate(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Fuel type</label>
+                  <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+                    {(['lpg', 'petrol'] as const).map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setImportFuelType(t)}
+                        className={`flex-1 py-2 text-xs font-medium transition-colors ${
+                          importFuelType === t
+                            ? t === 'lpg' ? 'bg-indigo-600 text-white' : 'bg-amber-500 text-white'
+                            : 'bg-white text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        {t === 'lpg' ? 'LPG' : 'Petrol'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <label className={`w-full flex items-center justify-center gap-2 border border-dashed rounded-lg py-2.5 text-sm font-medium transition-colors cursor-pointer ${importing ? 'opacity-50 cursor-not-allowed border-gray-200 text-gray-400' : 'border-indigo-300 text-indigo-600 hover:bg-indigo-50'}`}>
+                <Upload size={15} />
+                {importing ? 'Importing…' : 'Choose CSV file'}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  onChange={handleImport}
+                  disabled={importing}
+                />
+              </label>
+
+              {importResult && (
+                <p className="text-xs text-gray-600">{importResult}</p>
+              )}
+            </div>
           </div>
         </section>
       )}
