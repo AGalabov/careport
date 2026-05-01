@@ -35,13 +35,11 @@ export default function SettingsPage() {
   }
 
   function exportCSV() {
-    const header = 'date,odometer,liters,price_per_liter,total_cost,notes';
+    const header = 'date,odometer,fuel_type,liters,price_lpg,price_petrol,total_cost,notes';
     const rows = records.map((r) => {
       const d = r.date.toDate();
       const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      return [dateStr, r.odometer, r.liters, r.pricePerLiter, r.totalCost, r.notes ?? ''].join(
-        ',',
-      );
+      return [dateStr, r.odometer, r.fuelType, r.liters, r.priceLpg, r.pricePetrol, r.totalCost, r.notes ?? ''].join(',');
     });
     const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -60,22 +58,31 @@ export default function SettingsPage() {
     try {
       const text = await file.text();
       const rows = parseCSV(text);
-      // Skip header row if present
-      const dataRows = rows[0][0].toLowerCase().includes('date') ? rows.slice(1) : rows;
+      const firstCell = rows[0][0].toLowerCase();
+      const dataRows = firstCell.includes('date') || firstCell.includes('km') || firstCell.includes('odo')
+        ? rows.slice(1)
+        : rows;
 
       let imported = 0;
       let skipped = 0;
       for (const row of dataRows) {
-        const [dateStr, odoStr, litersStr, priceStr, , notes] = row;
-        const date = new Date(dateStr);
+        // Columns: date, odometer, fuel_type, liters, price_lpg, price_petrol, [total_cost], [notes]
+        const [dateStr, odoStr, fuelTypeRaw, litersStr, priceLpgStr, pricePetrolStr, , notes] = row;
         const odometer = Number(odoStr);
         const liters = Number(litersStr);
-        const pricePerLiter = Number(priceStr);
-        if (isNaN(date.getTime()) || isNaN(odometer) || isNaN(liters) || isNaN(pricePerLiter)) {
+        const priceLpg = Number(priceLpgStr);
+        const pricePetrol = Number(pricePetrolStr);
+        const fuelType = fuelTypeRaw?.toLowerCase().trim() === 'petrol' ? 'petrol' : 'lpg';
+
+        // Date is optional — default to Jan 1 of current year if missing/invalid
+        let date = new Date(dateStr);
+        if (isNaN(date.getTime())) date = new Date(`${new Date().getFullYear()}-01-01`);
+
+        if (isNaN(odometer) || isNaN(liters) || liters <= 0 || isNaN(priceLpg) || isNaN(pricePetrol)) {
           skipped++;
           continue;
         }
-        await addRecord({ date, odometer, liters, pricePerLiter, notes: notes?.trim() });
+        await addRecord({ date, odometer, fuelType, liters, priceLpg, pricePetrol, notes: notes?.trim() });
         imported++;
       }
       setImportResult(`Imported ${imported} records${skipped > 0 ? `, skipped ${skipped} invalid rows` : ''}.`);
@@ -200,7 +207,7 @@ export default function SettingsPage() {
               <div>
                 <p className="text-sm font-medium text-gray-900">Import from CSV</p>
                 <p className="text-xs text-gray-400">
-                  Columns: date, odometer, liters, price_per_liter, total_cost, notes
+                  Columns: date, odometer, fuel_type, liters, price_lpg, price_petrol, …
                 </p>
               </div>
               <input

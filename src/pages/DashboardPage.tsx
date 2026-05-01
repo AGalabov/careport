@@ -7,7 +7,8 @@ import { useFuelRecords } from '../hooks/useFuelRecords';
 import { useReminders } from '../hooks/useReminders';
 import FuelRecordForm from '../components/fuel/FuelRecordForm';
 import { checkKmReminders, checkDateReminders, requestNotificationPermission } from '../lib/notifications';
-import type { Reminder } from '../types';
+import type { Reminder, FuelRecord } from '../types';
+import type { AddRecordInput } from '../hooks/useFuelRecords';
 
 function getReminderUrgency(r: Reminder, odometer?: number): 'ok' | 'warn' | 'danger' | 'inactive' {
   if (!r.isActive) return 'inactive';
@@ -40,6 +41,65 @@ const urgencyDot: Record<string, string> = {
   inactive: 'bg-gray-300',
 };
 
+function LastFillCard({ record, prev }: { record: FuelRecord; prev?: FuelRecord }) {
+  const kmDriven = prev ? record.odometer - prev.odometer : null;
+  const consumption = kmDriven && kmDriven > 0 ? (record.liters / kmDriven) * 100 : null;
+  const equivalent =
+    consumption !== null && record.priceLpg > 0 && record.pricePetrol > 0
+      ? record.fuelType === 'lpg'
+        ? consumption * (record.priceLpg / record.pricePetrol)
+        : consumption * (record.pricePetrol / record.priceLpg)
+      : null;
+  const typeLabel = record.fuelType.toUpperCase();
+  const equivLabel = record.fuelType === 'lpg' ? 'Petrol equiv.' : 'LPG equiv.';
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Fuel size={16} className="text-indigo-600" />
+        <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+          Last {typeLabel} Fill-Up
+        </span>
+        <span
+          className={`ml-auto text-xs font-semibold px-1.5 py-0.5 rounded ${
+            record.fuelType === 'lpg'
+              ? 'bg-indigo-100 text-indigo-700'
+              : 'bg-amber-100 text-amber-700'
+          }`}
+        >
+          {typeLabel}
+        </span>
+      </div>
+      <p className="text-2xl font-bold text-gray-900 mb-0.5">
+        {record.odometer.toLocaleString()} km
+      </p>
+      <p className="text-xs text-gray-400 mb-3">{format(record.date.toDate(), 'dd MMM yyyy')}</p>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+        <div>
+          <span className="text-gray-400">Filled </span>
+          <span className="font-medium text-gray-700">{record.liters.toFixed(2)} L</span>
+        </div>
+        <div>
+          <span className="text-gray-400">Cost </span>
+          <span className="font-medium text-gray-700">€{record.totalCost.toFixed(2)}</span>
+        </div>
+        {consumption !== null && (
+          <div>
+            <span className="text-gray-400">Consumption </span>
+            <span className="font-medium text-indigo-600">{consumption.toFixed(2)} L/100km</span>
+          </div>
+        )}
+        {equivalent !== null && (
+          <div>
+            <span className="text-gray-400">{equivLabel} </span>
+            <span className="font-medium text-gray-500">{equivalent.toFixed(2)} L/100km</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { activeCar, cars } = useCar();
@@ -47,19 +107,19 @@ export default function DashboardPage() {
   const { reminders, updateReminder } = useReminders(activeCar?.id ?? null);
   const [showForm, setShowForm] = useState(false);
 
-  const latest = records[0];
-  const previous = records[1];
-  const kmDriven = latest && previous ? latest.odometer - previous.odometer : null;
-  const consumption = kmDriven && kmDriven > 0 ? (latest.liters / kmDriven) * 100 : null;
+  const lpgRecords = records.filter((r) => r.fuelType === 'lpg');
+  const petrolRecords = records.filter((r) => r.fuelType === 'petrol');
+  const latestLpg = lpgRecords[0];
+  const latestPetrol = petrolRecords[0];
+  const latestOdometer = records[0]?.odometer;
 
-  // Check date reminders on mount
   useEffect(() => {
     if (reminders.length > 0) {
       checkDateReminders(reminders, updateReminder);
     }
   }, [reminders.length]);
 
-  async function handleAddRecord(data: Parameters<typeof addRecord>[0]) {
+  async function handleAddRecord(data: AddRecordInput) {
     await addRecord(data);
     await checkKmReminders(data.odometer, activeCar!.id, reminders, updateReminder);
     setShowForm(false);
@@ -81,53 +141,26 @@ export default function DashboardPage() {
 
   return (
     <div className="px-4 pt-4 pb-6 max-w-lg mx-auto space-y-4">
-      {/* Last fill-up card */}
-      {latest ? (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Fuel size={16} className="text-indigo-600" />
-            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Last Fill-Up</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-900 mb-0.5">
-            {latest.odometer.toLocaleString()} km
-          </p>
-          <p className="text-xs text-gray-400 mb-3">{format(latest.date.toDate(), 'dd MMM yyyy')}</p>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-            <div>
-              <span className="text-gray-400">Filled</span>{' '}
-              <span className="font-medium text-gray-700">{latest.liters.toFixed(2)} L</span>
-            </div>
-            <div>
-              <span className="text-gray-400">Cost</span>{' '}
-              <span className="font-medium text-gray-700">€{latest.totalCost.toFixed(2)}</span>
-            </div>
-            {consumption !== null && (
-              <div>
-                <span className="text-gray-400">Consumption</span>{' '}
-                <span className="font-medium text-indigo-600">{consumption.toFixed(2)} L/100km</span>
-              </div>
-            )}
-            {kmDriven !== null && kmDriven > 0 && (
-              <div>
-                <span className="text-gray-400">Driven</span>{' '}
-                <span className="font-medium text-gray-700">{kmDriven.toLocaleString()} km</span>
-              </div>
-            )}
-          </div>
-        </div>
+      {latestLpg ? (
+        <LastFillCard record={latestLpg} prev={lpgRecords[1]} />
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center text-sm text-gray-400">
-          No fill-ups yet — log your first one below
+          No LPG fill-ups yet — log your first one below
         </div>
       )}
 
-      {/* Reminders summary */}
+      {latestPetrol && (
+        <LastFillCard record={latestPetrol} prev={petrolRecords[1]} />
+      )}
+
       {reminders.filter((r) => r.isActive).length > 0 && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Bell size={16} className="text-indigo-600" />
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Reminders</span>
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                Reminders
+              </span>
             </div>
             <button
               onClick={() => navigate('/reminders')}
@@ -142,13 +175,13 @@ export default function DashboardPage() {
               .sort((a, b) => {
                 const order = { danger: 0, warn: 1, ok: 2, inactive: 3 };
                 return (
-                  order[getReminderUrgency(a, latest?.odometer)] -
-                  order[getReminderUrgency(b, latest?.odometer)]
+                  order[getReminderUrgency(a, latestOdometer)] -
+                  order[getReminderUrgency(b, latestOdometer)]
                 );
               })
               .slice(0, 4)
               .map((r) => {
-                const urg = getReminderUrgency(r, latest?.odometer);
+                const urg = getReminderUrgency(r, latestOdometer);
                 return (
                   <div key={r.id} className="flex items-center gap-2.5">
                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${urgencyDot[urg]}`} />
@@ -160,7 +193,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Add fill-up button */}
       <button
         onClick={async () => {
           await requestNotificationPermission();
@@ -176,7 +208,8 @@ export default function DashboardPage() {
         <FuelRecordForm
           onClose={() => setShowForm(false)}
           onSubmit={handleAddRecord}
-          previousOdometer={latest?.odometer}
+          previousLpgOdometer={latestLpg?.odometer}
+          previousPetrolOdometer={latestPetrol?.odometer}
         />
       )}
     </div>

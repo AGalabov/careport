@@ -7,6 +7,7 @@ import FuelRecordForm from '../components/fuel/FuelRecordForm';
 import FuelRecordItem from '../components/fuel/FuelRecordItem';
 import { checkKmReminders } from '../lib/notifications';
 import type { FuelRecord } from '../types';
+import type { AddRecordInput } from '../hooks/useFuelRecords';
 
 export default function FuelLogPage() {
   const { activeCar } = useCar();
@@ -17,7 +18,16 @@ export default function FuelLogPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<FuelRecord | null>(null);
 
-  async function handleAdd(data: Parameters<typeof addRecord>[0]) {
+  const lpgRecords = records.filter((r) => r.fuelType === 'lpg');
+  const petrolRecords = records.filter((r) => r.fuelType === 'petrol');
+
+  function prevSameTypeOdometer(record: FuelRecord): number | undefined {
+    const sameType = records.filter((r) => r.fuelType === record.fuelType);
+    const idx = sameType.findIndex((r) => r.id === record.id);
+    return sameType[idx + 1]?.odometer;
+  }
+
+  async function handleAdd(data: AddRecordInput) {
     await addRecord(data);
     if (activeCar) {
       await checkKmReminders(data.odometer, activeCar.id, reminders, updateReminder);
@@ -25,7 +35,7 @@ export default function FuelLogPage() {
     setShowAdd(false);
   }
 
-  async function handleEdit(id: string, data: Parameters<typeof updateRecord>[1]) {
+  async function handleEdit(id: string, data: AddRecordInput) {
     await updateRecord(id, data);
     setEditing(null);
   }
@@ -55,11 +65,11 @@ export default function FuelLogPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {records.map((record, i) => (
+          {records.map((record) => (
             <FuelRecordItem
               key={record.id}
               record={record}
-              previousOdometer={records[i + 1]?.odometer}
+              previousSameTypeOdometer={prevSameTypeOdometer(record)}
               onEdit={() => setEditing(record)}
               onDelete={() => handleDelete(record.id)}
             />
@@ -67,7 +77,6 @@ export default function FuelLogPage() {
         </div>
       )}
 
-      {/* FAB */}
       <button
         onClick={() => setShowAdd(true)}
         className="fixed bottom-20 right-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-4 shadow-lg transition-colors z-30"
@@ -80,7 +89,8 @@ export default function FuelLogPage() {
         <FuelRecordForm
           onClose={() => setShowAdd(false)}
           onSubmit={handleAdd}
-          previousOdometer={records[0]?.odometer}
+          previousLpgOdometer={lpgRecords[0]?.odometer}
+          previousPetrolOdometer={petrolRecords[0]?.odometer}
         />
       )}
 
@@ -89,8 +99,11 @@ export default function FuelLogPage() {
           initial={editing}
           onClose={() => setEditing(null)}
           onSubmit={(data) => handleEdit(editing.id, data)}
-          previousOdometer={
-            records[records.findIndex((r) => r.id === editing.id) + 1]?.odometer
+          previousLpgOdometer={
+            lpgRecords[lpgRecords.findIndex((r) => r.id === editing.id) + 1]?.odometer
+          }
+          previousPetrolOdometer={
+            petrolRecords[petrolRecords.findIndex((r) => r.id === editing.id) + 1]?.odometer
           }
         />
       )}

@@ -14,7 +14,17 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import type { FuelRecord } from '../types';
+import type { FuelRecord, FuelType } from '../types';
+
+export interface AddRecordInput {
+  date: Date;
+  odometer: number;
+  fuelType: FuelType;
+  liters: number;
+  priceLpg: number;
+  pricePetrol: number;
+  notes?: string;
+}
 
 export function useFuelRecords(carId: string | null) {
   const { user } = useAuth();
@@ -39,22 +49,19 @@ export function useFuelRecords(carId: string | null) {
   }, [user, carId]);
 
   const addRecord = useCallback(
-    async (data: {
-      date: Date;
-      odometer: number;
-      liters: number;
-      pricePerLiter: number;
-      notes?: string;
-    }) => {
+    async (data: AddRecordInput) => {
       if (!user || !carId) return;
+      const price = data.fuelType === 'lpg' ? data.priceLpg : data.pricePetrol;
       await addDoc(collection(db, 'users', user.uid, 'fuelRecords'), {
         carId,
         userId: user.uid,
         date: Timestamp.fromDate(data.date),
         odometer: data.odometer,
+        fuelType: data.fuelType,
         liters: data.liters,
-        pricePerLiter: data.pricePerLiter,
-        totalCost: Math.round(data.liters * data.pricePerLiter * 100) / 100,
+        priceLpg: data.priceLpg,
+        pricePetrol: data.pricePetrol,
+        totalCost: Math.round(data.liters * price * 100) / 100,
         notes: data.notes ?? '',
         createdAt: serverTimestamp(),
       });
@@ -63,25 +70,24 @@ export function useFuelRecords(carId: string | null) {
   );
 
   const updateRecord = useCallback(
-    async (
-      id: string,
-      data: {
-        date?: Date;
-        odometer?: number;
-        liters?: number;
-        pricePerLiter?: number;
-        notes?: string;
-      },
-    ) => {
+    async (id: string, data: Partial<AddRecordInput>) => {
       if (!user) return;
       const payload: Record<string, unknown> = { ...data };
       if (data.date) payload.date = Timestamp.fromDate(data.date);
-      if (data.liters !== undefined && data.pricePerLiter !== undefined) {
-        payload.totalCost = Math.round(data.liters * data.pricePerLiter * 100) / 100;
+      if (data.liters !== undefined || data.priceLpg !== undefined || data.pricePetrol !== undefined || data.fuelType !== undefined) {
+        const existing = records.find((r) => r.id === id);
+        if (existing) {
+          const liters = data.liters ?? existing.liters;
+          const fuelType = data.fuelType ?? existing.fuelType;
+          const priceLpg = data.priceLpg ?? existing.priceLpg;
+          const pricePetrol = data.pricePetrol ?? existing.pricePetrol;
+          const price = fuelType === 'lpg' ? priceLpg : pricePetrol;
+          payload.totalCost = Math.round(liters * price * 100) / 100;
+        }
       }
       await updateDoc(doc(db, 'users', user.uid, 'fuelRecords', id), payload);
     },
-    [user],
+    [user, records],
   );
 
   const deleteRecord = useCallback(

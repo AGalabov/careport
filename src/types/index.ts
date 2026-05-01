@@ -11,14 +11,18 @@ export interface Car {
   createdAt: Timestamp;
 }
 
+export type FuelType = 'lpg' | 'petrol';
+
 export interface FuelRecord {
   id: string;
   carId: string;
   userId: string;
   date: Timestamp;
   odometer: number;
+  fuelType: FuelType;
   liters: number;
-  pricePerLiter: number;
+  priceLpg: number;
+  pricePetrol: number;
   totalCost: number;
   notes?: string;
   createdAt: Timestamp;
