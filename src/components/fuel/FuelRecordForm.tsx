@@ -1,0 +1,180 @@
+import { useState } from 'react';
+import { format } from 'date-fns';
+import { X } from 'lucide-react';
+import type { FuelRecord } from '../../types';
+
+interface Props {
+  onClose: () => void;
+  onSubmit: (data: {
+    date: Date;
+    odometer: number;
+    liters: number;
+    pricePerLiter: number;
+    notes?: string;
+  }) => Promise<void>;
+  previousOdometer?: number;
+  initial?: FuelRecord;
+}
+
+export default function FuelRecordForm({ onClose, onSubmit, previousOdometer, initial }: Props) {
+  const [date, setDate] = useState(
+    initial ? format(initial.date.toDate(), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+  );
+  const [odometer, setOdometer] = useState(initial?.odometer?.toString() ?? '');
+  const [liters, setLiters] = useState(initial?.liters?.toString() ?? '');
+  const [pricePerLiter, setPricePerLiter] = useState(initial?.pricePerLiter?.toString() ?? '');
+  const [notes, setNotes] = useState(initial?.notes ?? '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const totalCost = (parseFloat(liters) || 0) * (parseFloat(pricePerLiter) || 0);
+  const kmDriven =
+    previousOdometer && odometer ? Number(odometer) - previousOdometer : null;
+  const consumption =
+    kmDriven && kmDriven > 0 && liters ? (parseFloat(liters) / kmDriven) * 100 : null;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!date) { setError('Date is required'); return; }
+    if (!odometer || isNaN(Number(odometer))) { setError('Valid odometer reading is required'); return; }
+    if (!liters || isNaN(Number(liters)) || Number(liters) <= 0) { setError('Valid fill amount is required'); return; }
+    if (!pricePerLiter || isNaN(Number(pricePerLiter)) || Number(pricePerLiter) <= 0) {
+      setError('Valid price per liter is required');
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSubmit({
+        date: new Date(date),
+        odometer: Number(odometer),
+        liters: Number(liters),
+        pricePerLiter: Number(pricePerLiter),
+        notes: notes.trim() || undefined,
+      });
+      onClose();
+    } catch {
+      setError('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl max-h-[92vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-4 pt-4 pb-2">
+          <h2 className="text-base font-semibold text-gray-900">
+            {initial ? 'Edit Fill-Up' : 'Log Fill-Up'}
+          </h2>
+          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600">
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-4 pb-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Current odometer (km)
+            </label>
+            {previousOdometer && (
+              <p className="text-xs text-gray-400 mb-1">Previous: {previousOdometer.toLocaleString()} km</p>
+            )}
+            <input
+              type="number"
+              value={odometer}
+              onChange={(e) => setOdometer(e.target.value)}
+              placeholder="e.g. 45230"
+              min="0"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            {kmDriven !== null && kmDriven > 0 && (
+              <p className="text-xs text-indigo-600 mt-1">{kmDriven.toLocaleString()} km since last fill-up</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Liters filled
+              </label>
+              <input
+                type="number"
+                value={liters}
+                onChange={(e) => setLiters(e.target.value)}
+                placeholder="32.5"
+                min="0"
+                step="0.01"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Price / liter
+              </label>
+              <input
+                type="number"
+                value={pricePerLiter}
+                onChange={(e) => setPricePerLiter(e.target.value)}
+                placeholder="1.85"
+                min="0"
+                step="0.001"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+
+          {(totalCost > 0 || consumption !== null) && (
+            <div className="bg-indigo-50 rounded-lg p-3 flex gap-4 text-sm">
+              {totalCost > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500">Total cost</p>
+                  <p className="font-semibold text-gray-900">€{totalCost.toFixed(2)}</p>
+                </div>
+              )}
+              {consumption !== null && (
+                <div>
+                  <p className="text-xs text-gray-500">Consumption</p>
+                  <p className="font-semibold text-gray-900">{consumption.toFixed(2)} L/100km</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Notes <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder="Any notes about this fill-up…"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            />
+          </div>
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium rounded-lg py-2.5 text-sm transition-colors"
+          >
+            {saving ? 'Saving…' : initial ? 'Save Changes' : 'Log Fill-Up'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
