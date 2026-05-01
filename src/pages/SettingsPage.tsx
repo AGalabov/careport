@@ -8,12 +8,16 @@ import { requestNotificationPermission } from '../lib/notifications';
 import type { Car } from '../types';
 
 function parseCSV(content: string): string[][] {
-  return content
-    .trim()
-    .split('\n')
-    .map((line) =>
-      line.split(',').map((cell) => cell.trim().replace(/^"|"$/g, '')),
-    );
+  const lines = content.trim().split('\n');
+  const sep = lines[0].includes(';') ? ';' : ',';
+  return lines.map((line) =>
+    line.split(sep).map((cell) => cell.trim().replace(/^"|"$/g, '')),
+  );
+}
+
+function parseNum(val: string): number {
+  // Remove thousands separators (commas or spaces), keep decimal point
+  return Number(val.replace(/,(?=\d{3})/g, '').replace(/\s/g, ''));
 }
 
 export default function SettingsPage() {
@@ -69,10 +73,10 @@ export default function SettingsPage() {
       for (const row of dataRows) {
         // Columns: odometer, liters, price_lpg, price_petrol, [notes]
         const [odoStr, litersStr, priceLpgStr, pricePetrolStr, notes] = row;
-        const odometer = Number(odoStr);
-        const liters = Number(litersStr);
-        const priceLpg = Number(priceLpgStr);
-        const pricePetrol = Number(pricePetrolStr);
+        const odometer = parseNum(odoStr);
+        const liters = parseNum(litersStr);
+        const priceLpg = parseNum(priceLpgStr);
+        const pricePetrol = parseNum(pricePetrolStr);
 
         if (isNaN(odometer) || isNaN(liters) || liters <= 0 || isNaN(priceLpg) || isNaN(pricePetrol)) {
           skipped++;
