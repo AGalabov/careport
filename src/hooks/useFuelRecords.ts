@@ -10,6 +10,7 @@ import {
   deleteDoc,
   doc,
   serverTimestamp,
+  writeBatch,
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -98,5 +99,12 @@ export function useFuelRecords(carId: string | null) {
     [user],
   );
 
-  return { records, loading, addRecord, updateRecord, deleteRecord };
+  const deleteAllRecords = useCallback(async () => {
+    if (!user || !carId || records.length === 0) return;
+    const batch = writeBatch(db);
+    records.forEach((r) => batch.delete(doc(db, 'users', user.uid, 'fuelRecords', r.id)));
+    await batch.commit();
+  }, [user, carId, records]);
+
+  return { records, loading, addRecord, updateRecord, deleteRecord, deleteAllRecords };
 }

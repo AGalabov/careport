@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { LogOut, Bell, BellOff, Car as CarIcon, Download, Upload, Plus } from 'lucide-react';
+import { LogOut, Bell, BellOff, Car as CarIcon, Download, Upload, Plus, Trash2 } from 'lucide-react';
 import { useCar } from '../contexts/CarContext';
 import { useFuelRecords } from '../hooks/useFuelRecords';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,7 +23,7 @@ function parseNum(val: string): number {
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
   const { cars, activeCar, addCar, updateCar, deleteCar } = useCar();
-  const { records, addRecord } = useFuelRecords(activeCar?.id ?? null);
+  const { records, addRecord, deleteAllRecords } = useFuelRecords(activeCar?.id ?? null);
   const [showCarForm, setShowCarForm] = useState(false);
   const [editingCar, setEditingCar] = useState<Car | null>(null);
   const [notifGranted, setNotifGranted] = useState(
@@ -66,7 +66,7 @@ export default function SettingsPage() {
       const rows = parseCSV(text);
       const firstCell = rows[0][0].toLowerCase();
       const dataRows = isNaN(Number(firstCell)) ? rows.slice(1) : rows;
-      const date = new Date(importDate);
+      const baseDate = new Date(importDate);
 
       let imported = 0;
       let skipped = 0;
@@ -82,6 +82,8 @@ export default function SettingsPage() {
           skipped++;
           continue;
         }
+        const date = new Date(baseDate);
+        date.setDate(date.getDate() + imported);
         await addRecord({ date, odometer, fuelType: importFuelType, liters, priceLpg, pricePetrol, notes: notes?.trim() });
         imported++;
       }
@@ -190,6 +192,23 @@ export default function SettingsPage() {
             Data
           </h3>
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm divide-y divide-gray-100">
+            <button
+              onClick={async () => {
+                if (confirm(`Delete all ${records.length} fuel records? This cannot be undone.`)) {
+                  await deleteAllRecords();
+                  setImportResult('');
+                }
+              }}
+              disabled={records.length === 0}
+              className="w-full flex items-center gap-3 p-4 text-left hover:bg-red-50 disabled:opacity-50 transition-colors"
+            >
+              <Trash2 size={16} className="text-red-500" />
+              <div>
+                <p className="text-sm font-medium text-red-600">Clear all fuel records</p>
+                <p className="text-xs text-gray-400">{records.length} records will be deleted</p>
+              </div>
+            </button>
+
             <button
               onClick={exportCSV}
               disabled={records.length === 0}
