@@ -44,6 +44,7 @@ export function CarProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
+    setLoading(true);
     return onSnapshot(collection(db, 'users', user.uid, 'cars'), (snap) => {
       const loaded = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Car));
       setCars(loaded);
