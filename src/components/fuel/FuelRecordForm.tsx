@@ -20,25 +20,34 @@ export default function FuelRecordForm({
   initial,
 }: Props) {
   const [date, setDate] = useState(
-    initial ? format(initial.date.toDate(), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+    initial
+      ? format(initial.date.toDate(), 'yyyy-MM-dd')
+      : format(new Date(), 'yyyy-MM-dd'),
   );
-  const [fuelType, setFuelType] = useState<FuelType>(initial?.fuelType ?? 'lpg');
+  const [fuelType, setFuelType] = useState<FuelType>(
+    initial?.fuelType ?? 'lpg',
+  );
   const [odometer, setOdometer] = useState(initial?.odometer?.toString() ?? '');
   const [liters, setLiters] = useState(initial?.liters?.toString() ?? '');
   const [priceLpg, setPriceLpg] = useState(initial?.priceLpg?.toString() ?? '');
-  const [pricePetrol, setPricePetrol] = useState(initial?.pricePetrol?.toString() ?? '');
+  const [pricePetrol, setPricePetrol] = useState(
+    initial?.pricePetrol?.toString() ?? '',
+  );
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const prevOdometer = fuelType === 'lpg' ? previousLpgOdometer : previousPetrolOdometer;
-  const kmDriven = prevOdometer && odometer ? Number(odometer) - prevOdometer : null;
+  const prevOdometer =
+    fuelType === 'lpg' ? previousLpgOdometer : previousPetrolOdometer;
+  const kmDriven =
+    prevOdometer && odometer ? Number(odometer) - prevOdometer : null;
   const lpg = parseFloat(priceLpg) || 0;
   const petrol = parseFloat(pricePetrol) || 0;
   const litersNum = parseFloat(liters) || 0;
   const filledPrice = fuelType === 'lpg' ? lpg : petrol;
   const totalCost = litersNum * filledPrice;
-  const consumption = kmDriven && kmDriven > 0 && litersNum ? (litersNum / kmDriven) * 100 : null;
+  const consumption =
+    kmDriven && kmDriven > 0 && litersNum ? (litersNum / kmDriven) * 100 : null;
   const equivalent =
     consumption !== null && lpg > 0 && petrol > 0
       ? fuelType === 'lpg'
@@ -49,24 +58,44 @@ export default function FuelRecordForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!date) { setError('Date is required'); return; }
-    if (!odometer || isNaN(Number(odometer))) { setError('Valid odometer reading is required'); return; }
-    if (!liters || isNaN(Number(liters)) || Number(liters) <= 0) { setError('Valid fill amount is required'); return; }
-    if (!priceLpg || isNaN(Number(priceLpg)) || Number(priceLpg) <= 0) { setError('LPG price is required'); return; }
-    if (!pricePetrol || isNaN(Number(pricePetrol)) || Number(pricePetrol) <= 0) { setError('Petrol price is required'); return; }
+    if (!date) {
+      setError('Date is required');
+      return;
+    }
+    if (!odometer || isNaN(Number(odometer))) {
+      setError('Valid odometer reading is required');
+      return;
+    }
+    if (!liters || isNaN(Number(liters)) || Number(liters) <= 0) {
+      setError('Valid fill amount is required');
+      return;
+    }
+    if (!priceLpg || isNaN(Number(priceLpg)) || Number(priceLpg) <= 0) {
+      setError('LPG price is required');
+      return;
+    }
+    if (
+      !pricePetrol ||
+      isNaN(Number(pricePetrol)) ||
+      Number(pricePetrol) <= 0
+    ) {
+      setError('Petrol price is required');
+      return;
+    }
     setSaving(true);
     try {
-      await onSubmit({
+      onSubmit({
         date: new Date(date),
         odometer: Number(odometer),
         fuelType,
         liters: Number(liters),
         priceLpg: Number(priceLpg),
         pricePetrol: Number(pricePetrol),
-        notes: notes.trim() || undefined,
+        notes: notes.trim(),
       });
       onClose();
-    } catch {
+    } catch (err) {
+      console.error('Failed to save fuel record:', err);
       setError('Failed to save. Please try again.');
     } finally {
       setSaving(false);
@@ -74,14 +103,17 @@ export default function FuelRecordForm({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center">
+    <p className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <h2 className="text-base font-semibold text-gray-900">
             {initial ? 'Edit Fill-Up' : 'Log Fill-Up'}
           </h2>
-          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600">
+          <button
+            onClick={onClose}
+            className="p-1 text-gray-400 hover:text-gray-600"
+          >
             <X size={20} />
           </button>
         </div>
@@ -108,13 +140,25 @@ export default function FuelRecordForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Date
+            </label>
+            <label className="relative flex items-center w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus-within:ring-2 focus-within:ring-indigo-500 cursor-pointer bg-white">
+              <span className="pointer-events-none text-gray-900">
+                {date === format(new Date(), 'yyyy-MM-dd')
+                  ? 'Today'
+                  : (() => {
+                      const [y, m, d] = date.split('-').map(Number);
+                      return format(new Date(y, m - 1, d), 'dd MMM yyyy');
+                    })()}
+              </span>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+              />
+            </label>
           </div>
 
           <div>
@@ -123,7 +167,8 @@ export default function FuelRecordForm({
             </label>
             {prevOdometer && (
               <p className="text-xs text-gray-400 mb-1">
-                Previous {fuelType.toUpperCase()} fill: {prevOdometer.toLocaleString()} km
+                Previous {fuelType.toUpperCase()} fill:{' '}
+                {prevOdometer.toLocaleString()} km
               </p>
             )}
             <input
@@ -136,7 +181,8 @@ export default function FuelRecordForm({
             />
             {kmDriven !== null && kmDriven > 0 && (
               <p className="text-xs text-indigo-600 mt-1">
-                {kmDriven.toLocaleString()} km since last {fuelType.toUpperCase()} fill-up
+                {kmDriven.toLocaleString()} km since last{' '}
+                {fuelType.toUpperCase()} fill-up
               </p>
             )}
           </div>
@@ -194,19 +240,25 @@ export default function FuelRecordForm({
               {totalCost > 0 && (
                 <div>
                   <p className="text-xs text-gray-500">Total cost</p>
-                  <p className="font-semibold text-gray-900">€{totalCost.toFixed(2)}</p>
+                  <p className="font-semibold text-gray-900">
+                    €{totalCost.toFixed(2)}
+                  </p>
                 </div>
               )}
               {consumption !== null && (
                 <div>
                   <p className="text-xs text-gray-500">Consumption</p>
-                  <p className="font-semibold text-gray-900">{consumption.toFixed(2)} L/100km</p>
+                  <p className="font-semibold text-gray-900">
+                    {consumption.toFixed(2)} L/100km
+                  </p>
                 </div>
               )}
               {equivalent !== null && (
                 <div className="col-span-2">
                   <p className="text-xs text-gray-500">{equivalentLabel}</p>
-                  <p className="font-semibold text-indigo-600">{equivalent.toFixed(2)} L/100km</p>
+                  <p className="font-semibold text-indigo-600">
+                    {equivalent.toFixed(2)} L/100km
+                  </p>
                 </div>
               )}
             </div>
@@ -214,7 +266,8 @@ export default function FuelRecordForm({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Notes <span className="text-gray-400 font-normal">(optional)</span>
+              Notes{' '}
+              <span className="text-gray-400 font-normal">(optional)</span>
             </label>
             <textarea
               value={notes}
@@ -236,6 +289,6 @@ export default function FuelRecordForm({
           </button>
         </form>
       </div>
-    </div>
+    </p>
   );
 }
