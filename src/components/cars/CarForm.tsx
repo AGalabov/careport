@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
+import { useAsyncAction, getErrorMessage } from '../../hooks/use-async-action';
 import type { Car } from '../../types';
 
 interface Props {
@@ -14,28 +15,25 @@ export default function CarForm({ onClose, onSubmit, initial }: Props) {
   const [model, setModel] = useState(initial?.model ?? '');
   const [year, setYear] = useState(initial?.year?.toString() ?? '');
   const [odometer, setOdometer] = useState(initial?.initialOdometer?.toString() ?? '');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
 
-  async function handleSubmit(e: React.FormEvent) {
+  const { loading: saving, error, trigger } = useAsyncAction(async () => {
+    if (!name.trim()) throw new Error('Name is required');
+    if (!odometer || isNaN(Number(odometer))) throw new Error('Valid odometer reading is required');
+    await onSubmit({
+      name: name.trim(),
+      make: make.trim() || undefined,
+      model: model.trim() || undefined,
+      year: year ? Number(year) : undefined,
+      initialOdometer: Number(odometer),
+    });
+    onClose();
+  });
+
+  const errorMessage = getErrorMessage(error);
+
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) { setError('Name is required'); return; }
-    if (!odometer || isNaN(Number(odometer))) { setError('Valid odometer reading is required'); return; }
-    setSaving(true);
-    try {
-      await onSubmit({
-        name: name.trim(),
-        make: make.trim() || undefined,
-        model: model.trim() || undefined,
-        year: year ? Number(year) : undefined,
-        initialOdometer: Number(odometer),
-      });
-      onClose();
-    } catch {
-      setError('Failed to save. Please try again.');
-    } finally {
-      setSaving(false);
-    }
+    trigger();
   }
 
   return (
@@ -116,7 +114,7 @@ export default function CarForm({ onClose, onSubmit, initial }: Props) {
             </div>
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
 
           <button
             type="submit"

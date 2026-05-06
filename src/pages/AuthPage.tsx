@@ -1,6 +1,21 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useAsyncAction } from '../hooks/use-async-action';
+
+function formatSignInError(err: unknown): string {
+  if (err instanceof Error) {
+    if (
+      err.message.includes('invalid-credential') ||
+      err.message.includes('wrong-password') ||
+      err.message.includes('user-not-found')
+    ) {
+      return 'Invalid email or password.';
+    }
+    return 'Sign-in failed. Please try again.';
+  }
+  return 'Sign-in failed. Please try again.';
+}
 
 export default function AuthPage() {
   const { user, signIn, signInWithEmail } = useAuth();
@@ -8,39 +23,34 @@ export default function AuthPage() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+
+  const { error: googleError, trigger: triggerGoogleSignIn } = useAsyncAction(async () => {
+    await signIn();
+  });
+
+  const { loading: submitting, error: emailError, trigger: triggerEmailSignIn } = useAsyncAction(
+    async (em: string, pw: string) => {
+      await signInWithEmail(em, pw);
+    },
+  );
+
+  const error = googleError
+    ? (googleError instanceof Error ? googleError.message : 'Google sign-in failed.')
+    : emailError
+      ? formatSignInError(emailError)
+      : '';
 
   useEffect(() => {
     if (user) navigate('/', { replace: true });
   }, [user, navigate]);
 
-  async function handleGoogleSignIn() {
-    setError('');
-    try {
-      await signIn();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Google sign-in failed.');
-    }
+  function handleGoogleSignIn() {
+    triggerGoogleSignIn();
   }
 
-  async function handleEmailSignIn(e: FormEvent) {
+  function handleEmailSignIn(e: FormEvent) {
     e.preventDefault();
-    setError('');
-    setSubmitting(true);
-    try {
-      await signInWithEmail(email, password);
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        if (err.message.includes('invalid-credential') || err.message.includes('wrong-password') || err.message.includes('user-not-found')) {
-          setError('Invalid email or password.');
-        } else {
-          setError('Sign-in failed. Please try again.');
-        }
-      }
-    } finally {
-      setSubmitting(false);
-    }
+    triggerEmailSignIn(email, password);
   }
 
   return (

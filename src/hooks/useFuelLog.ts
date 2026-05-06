@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useAsync } from './use-async';
 import type { FuelRecord } from '../types';
 import type { AddRecordInput } from './useFuelRecords';
 
@@ -26,7 +27,6 @@ export function useFuelLog(carId: string | null) {
   const [currentYearRecords, setCurrentYearRecords] = useState<FuelRecord[]>([]);
   const [pastRecords, setPastRecords] = useState<Map<number, FuelRecord[]>>(new Map());
   const pastRecordsRef = useRef<Map<number, FuelRecord[]>>(new Map());
-  const [availableYears, setAvailableYears] = useState<number[]>([currentYear]);
   const [loading, setLoading] = useState(true);
   const [yearLoading, setYearLoading] = useState<Set<number>>(new Set());
 
@@ -48,24 +48,29 @@ export function useFuelLog(carId: string | null) {
     });
   }, [user, carId, currentYear]);
 
-  useEffect(() => {
-    if (!user || !carId) return;
-    getDocs(
+  const { data: oldestYear } = useAsync(async () => {
+    if (!user || !carId) return undefined;
+    const snap = await getDocs(
       query(
         collection(db, 'users', user.uid, 'fuelRecords'),
         where('carId', '==', carId),
         orderBy('date', 'asc'),
         limit(1),
       ),
-    ).then((snap) => {
-      if (!snap.empty) {
-        const oldest = (snap.docs[0].data().date as Timestamp).toDate().getFullYear();
-        setAvailableYears(
-          Array.from({ length: currentYear - oldest + 1 }, (_, i) => currentYear - i),
-        );
-      }
-    });
+    );
+    if (!snap.empty) {
+      return (snap.docs[0].data().date as Timestamp).toDate().getFullYear();
+    }
+    return undefined;
   }, [user, carId, currentYear]);
+
+  const availableYears = useMemo(
+    () =>
+      oldestYear
+        ? Array.from({ length: currentYear - oldestYear + 1 }, (_, i) => currentYear - i)
+        : [currentYear],
+    [oldestYear, currentYear],
+  );
 
   const loadYear = useCallback(
     async (year: number) => {

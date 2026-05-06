@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { X } from 'lucide-react';
+import { useAsyncAction, getErrorMessage } from '../../hooks/use-async-action';
 import type { Reminder } from '../../types';
 
 interface Props {
@@ -66,45 +67,41 @@ export default function ReminderForm({ onClose, onSubmit, initial, currentOdomet
     initial?.alertBeforeDays ?? [30, 7, 1],
   );
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) { setError('Name is required'); return; }
+  const { loading: saving, error, trigger } = useAsyncAction(async () => {
+    if (!name.trim()) throw new Error('Name is required');
     if (type === 'km') {
       if (!intervalKm || isNaN(Number(intervalKm)) || Number(intervalKm) <= 0) {
-        setError('Valid interval is required');
-        return;
+        throw new Error('Valid interval is required');
       }
     } else {
-      if (!dueDate) { setError('Due date is required'); return; }
+      if (!dueDate) throw new Error('Due date is required');
     }
-    setSaving(true);
-    try {
-      const base = { name: name.trim(), type, isActive };
-      if (type === 'km') {
-        await onSubmit({
-          ...base,
-          intervalKm: Number(intervalKm),
-          lastServiceKm: Number(lastServiceKm) || 0,
-          alertBeforeKm,
-          notifiedKmThresholds: initial?.notifiedKmThresholds ?? [],
-        });
-      } else {
-        await onSubmit({
-          ...base,
-          dueDate: new Date(dueDate) as unknown as Reminder['dueDate'],
-          alertBeforeDays,
-          notifiedDayThresholds: initial?.notifiedDayThresholds ?? [],
-        });
-      }
-      onClose();
-    } catch {
-      setError('Failed to save. Please try again.');
-    } finally {
-      setSaving(false);
+    const base = { name: name.trim(), type, isActive };
+    if (type === 'km') {
+      await onSubmit({
+        ...base,
+        intervalKm: Number(intervalKm),
+        lastServiceKm: Number(lastServiceKm) || 0,
+        alertBeforeKm,
+        notifiedKmThresholds: initial?.notifiedKmThresholds ?? [],
+      });
+    } else {
+      await onSubmit({
+        ...base,
+        dueDate: new Date(dueDate) as unknown as Reminder['dueDate'],
+        alertBeforeDays,
+        notifiedDayThresholds: initial?.notifiedDayThresholds ?? [],
+      });
     }
+    onClose();
+  });
+
+  const errorMessage = getErrorMessage(error);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    trigger();
   }
 
   return (
@@ -238,7 +235,7 @@ export default function ReminderForm({ onClose, onSubmit, initial, currentOdomet
             </button>
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
 
           <button
             type="submit"
