@@ -1,73 +1,80 @@
-# React + TypeScript + Vite
+# Careport
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Personal car care app — fuel tracking, km-based and date-based maintenance reminders, PWA.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Frontend**: React 19 + TypeScript + Vite
+- **Styling**: Tailwind CSS v4
+- **Database**: Firebase Firestore (offline-capable)
+- **Auth**: Firebase Auth (Google Sign-In + Email/Password)
+- **Hosting**: Firebase Hosting
+- **PWA**: vite-plugin-pwa + Workbox
 
-## React Compiler
+## Prerequisites
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Node.js 18+
+- [Firebase CLI](https://firebase.google.com/docs/cli): `npm install -g firebase-tools`
+- A Firebase project with Firestore, Google Auth, and Email/Password Auth enabled
 
-## Expanding the ESLint configuration
+## Local Development
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+1. Copy `.env.example` to `.env` and fill in your Firebase credentials
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the dev server:
+   ```bash
+   npm run dev
+   ```
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Deploy
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### First-time setup
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+1. Log in to Firebase:
+   ```bash
+   firebase login
+   ```
+2. Set the active project:
+   ```bash
+   firebase use <your-project-id>
+   ```
+3. Deploy Firestore security rules:
+   ```bash
+   firebase deploy --only firestore:rules
+   ```
+
+### Deploy the app
+
+Build and deploy to Firebase Hosting:
+
+```bash
+npm run build
+firebase deploy
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+This deploys both the hosting (from `dist/`) and Firestore rules/indexes.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+To deploy only hosting:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build
+firebase deploy --only hosting
+```
+
+## Auth
+
+Two sign-in methods: **Google** and **Email/Password**.
+
+Email/password accounts must be created manually in the Firebase Console (Authentication → Users → Add user). There is no self-service sign-up form. To prevent unauthorized account creation, go to Firebase Console → Authentication → Settings → User actions and uncheck "Enable create (sign-up)".
+
+## CSV Import Format
+
+Fuel records can be imported from CSV. The header row is optional:
+
+```
+date,odometer,liters,price_per_liter,total_cost,notes
+2024-01-15,45230,32.5,1.85,60.13,
 ```
