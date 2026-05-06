@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { format } from 'date-fns';
 import { X, Calendar } from 'lucide-react';
-import { useAsyncAction } from '../../hooks/use-async-action';
+import { useAsyncAction, getErrorMessage } from '../../hooks/use-async-action';
 import type { FuelRecord, FuelType } from '../../types';
 import type { AddRecordInput } from '../../hooks/useFuelRecords';
 
@@ -74,7 +74,7 @@ export default function FuelRecordForm({
     onClose();
   });
 
-  const errorMessage = error instanceof Error ? error.message : error ? String(error) : '';
+  const errorMessage = getErrorMessage(error);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -82,7 +82,7 @@ export default function FuelRecordForm({
   }
 
   return (
-    <p className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
@@ -279,6 +279,6 @@ export default function FuelRecordForm({
           </button>
         </form>
       </div>
-    </p>
+    </div>
   );
 }

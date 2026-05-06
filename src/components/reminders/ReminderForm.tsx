@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { X } from 'lucide-react';
-import { useAsyncAction } from '../../hooks/use-async-action';
+import { useAsyncAction, getErrorMessage } from '../../hooks/use-async-action';
 import type { Reminder } from '../../types';
 
 interface Props {
@@ -97,7 +97,7 @@ export default function ReminderForm({ onClose, onSubmit, initial, currentOdomet
     onClose();
   });
 
-  const errorMessage = error instanceof Error ? error.message : error ? String(error) : '';
+  const errorMessage = getErrorMessage(error);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

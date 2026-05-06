@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import { useAsyncAction } from '../../hooks/use-async-action';
+import { useAsyncAction, getErrorMessage } from '../../hooks/use-async-action';
 import type { Car } from '../../types';
 
 interface Props {
@@ -29,7 +29,7 @@ export default function CarForm({ onClose, onSubmit, initial }: Props) {
     onClose();
   });
 
-  const errorMessage = error instanceof Error ? error.message : error ? String(error) : '';
+  const errorMessage = getErrorMessage(error);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

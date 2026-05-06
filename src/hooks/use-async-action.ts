@@ -1,5 +1,10 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 
+export function getErrorMessage(error: unknown): string {
+  if (!error) return '';
+  return error instanceof Error ? error.message : String(error);
+}
+
 type AsyncState<Result> = {
   loading: boolean;
   error?: unknown;
