@@ -67,33 +67,19 @@ export default function ReminderForm({ onClose, onSubmit, initial, currentOdomet
     initial?.alertBeforeDays ?? [30, 7, 1],
   );
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
-  const [validationError, setValidationError] = useState('');
 
-  const submitAction = useAsyncAction(
-    async (data: Omit<Reminder, 'id' | 'userId' | 'carId' | 'createdAt'>) => {
-      await onSubmit(data);
-      onClose();
-    },
-  );
-
-  const saving = submitAction.loading;
-  const error = validationError || (submitAction.error ? 'Failed to save. Please try again.' : '');
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setValidationError('');
-    if (!name.trim()) { setValidationError('Name is required'); return; }
+  const { loading: saving, error, trigger } = useAsyncAction(async () => {
+    if (!name.trim()) throw new Error('Name is required');
     if (type === 'km') {
       if (!intervalKm || isNaN(Number(intervalKm)) || Number(intervalKm) <= 0) {
-        setValidationError('Valid interval is required');
-        return;
+        throw new Error('Valid interval is required');
       }
     } else {
-      if (!dueDate) { setValidationError('Due date is required'); return; }
+      if (!dueDate) throw new Error('Due date is required');
     }
     const base = { name: name.trim(), type, isActive };
     if (type === 'km') {
-      submitAction.trigger({
+      await onSubmit({
         ...base,
         intervalKm: Number(intervalKm),
         lastServiceKm: Number(lastServiceKm) || 0,
@@ -101,13 +87,21 @@ export default function ReminderForm({ onClose, onSubmit, initial, currentOdomet
         notifiedKmThresholds: initial?.notifiedKmThresholds ?? [],
       });
     } else {
-      submitAction.trigger({
+      await onSubmit({
         ...base,
         dueDate: new Date(dueDate) as unknown as Reminder['dueDate'],
         alertBeforeDays,
         notifiedDayThresholds: initial?.notifiedDayThresholds ?? [],
       });
     }
+    onClose();
+  });
+
+  const errorMessage = error instanceof Error ? error.message : error ? String(error) : '';
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    trigger();
   }
 
   return (
@@ -241,7 +235,7 @@ export default function ReminderForm({ onClose, onSubmit, initial, currentOdomet
             </button>
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
 
           <button
             type="submit"

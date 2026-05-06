@@ -15,28 +15,25 @@ export default function CarForm({ onClose, onSubmit, initial }: Props) {
   const [model, setModel] = useState(initial?.model ?? '');
   const [year, setYear] = useState(initial?.year?.toString() ?? '');
   const [odometer, setOdometer] = useState(initial?.initialOdometer?.toString() ?? '');
-  const [validationError, setValidationError] = useState('');
 
-  const submitAction = useAsyncAction(async (data: Omit<Car, 'id' | 'userId' | 'createdAt'>) => {
-    await onSubmit(data);
-    onClose();
-  });
-
-  const saving = submitAction.loading;
-  const error = validationError || (submitAction.error ? 'Failed to save. Please try again.' : '');
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setValidationError('');
-    if (!name.trim()) { setValidationError('Name is required'); return; }
-    if (!odometer || isNaN(Number(odometer))) { setValidationError('Valid odometer reading is required'); return; }
-    submitAction.trigger({
+  const { loading: saving, error, trigger } = useAsyncAction(async () => {
+    if (!name.trim()) throw new Error('Name is required');
+    if (!odometer || isNaN(Number(odometer))) throw new Error('Valid odometer reading is required');
+    await onSubmit({
       name: name.trim(),
       make: make.trim() || undefined,
       model: model.trim() || undefined,
       year: year ? Number(year) : undefined,
       initialOdometer: Number(odometer),
     });
+    onClose();
+  });
+
+  const errorMessage = error instanceof Error ? error.message : error ? String(error) : '';
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    trigger();
   }
 
   return (
@@ -117,7 +114,7 @@ export default function CarForm({ onClose, onSubmit, initial }: Props) {
             </div>
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
 
           <button
             type="submit"

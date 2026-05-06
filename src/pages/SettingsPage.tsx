@@ -34,7 +34,12 @@ export default function SettingsPage() {
   const [importFuelType, setImportFuelType] = useState<'lpg' | 'petrol'>('lpg');
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const importAction = useAsyncAction(async (file: File) => {
+  const {
+    loading: importing,
+    data: importData,
+    error: importError,
+    trigger: triggerImport,
+  } = useAsyncAction(async (file: File) => {
     const text = await file.text();
     const rows = parseCSV(text);
     const firstCell = rows[0][0].toLowerCase();
@@ -62,8 +67,7 @@ export default function SettingsPage() {
     return `Imported ${imported} records${skipped > 0 ? `, skipped ${skipped} invalid rows` : ''}.`;
   });
 
-  const importing = importAction.loading;
-  const importResult = importAction.data ?? (importAction.error ? 'Import failed. Check the file format.' : '');
+  const importResult = importData ?? (importError ? 'Import failed. Check the file format.' : '');
 
   async function handleEnableNotifications() {
     const granted = await requestNotificationPermission();
@@ -89,7 +93,7 @@ export default function SettingsPage() {
   function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !activeCar) return;
-    importAction.trigger(file);
+    triggerImport(file);
     if (fileRef.current) fileRef.current.value = '';
   }
 

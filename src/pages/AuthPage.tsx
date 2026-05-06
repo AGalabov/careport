@@ -24,19 +24,20 @@ export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const googleSignInAction = useAsyncAction(async () => {
+  const { error: googleError, trigger: triggerGoogleSignIn } = useAsyncAction(async () => {
     await signIn();
   });
 
-  const emailSignInAction = useAsyncAction(async (em: string, pw: string) => {
-    await signInWithEmail(em, pw);
-  });
+  const { loading: submitting, error: emailError, trigger: triggerEmailSignIn } = useAsyncAction(
+    async (em: string, pw: string) => {
+      await signInWithEmail(em, pw);
+    },
+  );
 
-  const submitting = emailSignInAction.loading;
-  const error = googleSignInAction.error
-    ? (googleSignInAction.error instanceof Error ? googleSignInAction.error.message : 'Google sign-in failed.')
-    : emailSignInAction.error
-      ? formatSignInError(emailSignInAction.error)
+  const error = googleError
+    ? (googleError instanceof Error ? googleError.message : 'Google sign-in failed.')
+    : emailError
+      ? formatSignInError(emailError)
       : '';
 
   useEffect(() => {
@@ -44,12 +45,12 @@ export default function AuthPage() {
   }, [user, navigate]);
 
   function handleGoogleSignIn() {
-    googleSignInAction.trigger();
+    triggerGoogleSignIn();
   }
 
   function handleEmailSignIn(e: FormEvent) {
     e.preventDefault();
-    emailSignInAction.trigger(email, password);
+    triggerEmailSignIn(email, password);
   }
 
   return (

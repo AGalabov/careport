@@ -35,7 +35,6 @@ export default function FuelRecordForm({
     initial?.pricePetrol?.toString() ?? '',
   );
   const [notes, setNotes] = useState(initial?.notes ?? '');
-  const [validationError, setValidationError] = useState('');
   const dateInputRef = useRef<HTMLInputElement>(null);
 
   const prevOdometer =
@@ -57,42 +56,13 @@ export default function FuelRecordForm({
       : null;
   const equivalentLabel = fuelType === 'lpg' ? 'Petrol equiv.' : 'LPG equiv.';
 
-  const submitAction = useAsyncAction(async (data: AddRecordInput) => {
-    await onSubmit(data);
-    onClose();
-  });
-
-  const saving = submitAction.loading;
-  const error = validationError || (submitAction.error ? 'Failed to save. Please try again.' : '');
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setValidationError('');
-    if (!date) {
-      setValidationError('Date is required');
-      return;
-    }
-    if (!odometer || isNaN(Number(odometer))) {
-      setValidationError('Valid odometer reading is required');
-      return;
-    }
-    if (!liters || isNaN(Number(liters)) || Number(liters) <= 0) {
-      setValidationError('Valid fill amount is required');
-      return;
-    }
-    if (!priceLpg || isNaN(Number(priceLpg)) || Number(priceLpg) <= 0) {
-      setValidationError('LPG price is required');
-      return;
-    }
-    if (
-      !pricePetrol ||
-      isNaN(Number(pricePetrol)) ||
-      Number(pricePetrol) <= 0
-    ) {
-      setValidationError('Petrol price is required');
-      return;
-    }
-    submitAction.trigger({
+  const { loading: saving, error, trigger } = useAsyncAction(async () => {
+    if (!date) throw new Error('Date is required');
+    if (!odometer || isNaN(Number(odometer))) throw new Error('Valid odometer reading is required');
+    if (!liters || isNaN(Number(liters)) || Number(liters) <= 0) throw new Error('Valid fill amount is required');
+    if (!priceLpg || isNaN(Number(priceLpg)) || Number(priceLpg) <= 0) throw new Error('LPG price is required');
+    if (!pricePetrol || isNaN(Number(pricePetrol)) || Number(pricePetrol) <= 0) throw new Error('Petrol price is required');
+    await onSubmit({
       date: new Date(date),
       odometer: Number(odometer),
       fuelType,
@@ -101,6 +71,14 @@ export default function FuelRecordForm({
       pricePetrol: Number(pricePetrol),
       notes: notes.trim(),
     });
+    onClose();
+  });
+
+  const errorMessage = error instanceof Error ? error.message : error ? String(error) : '';
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    trigger();
   }
 
   return (
@@ -290,7 +268,7 @@ export default function FuelRecordForm({
             />
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
 
           <button
             type="submit"
