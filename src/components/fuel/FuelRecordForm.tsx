@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { format } from 'date-fns';
-import { X } from 'lucide-react';
+import { X, Calendar } from 'lucide-react';
 import type { FuelRecord, FuelType } from '../../types';
 import type { AddRecordInput } from '../../hooks/useFuelRecords';
 
@@ -36,6 +36,7 @@ export default function FuelRecordForm({
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   const prevOdometer =
     fuelType === 'lpg' ? previousLpgOdometer : previousPetrolOdometer;
@@ -143,8 +144,17 @@ export default function FuelRecordForm({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Date
             </label>
-            <label className="relative flex items-center w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus-within:ring-2 focus-within:ring-indigo-500 cursor-pointer bg-white">
-              <span className="pointer-events-none text-gray-900">
+            <div
+              onClick={() => {
+                try {
+                  dateInputRef.current?.showPicker();
+                } catch {
+                  dateInputRef.current?.focus();
+                }
+              }}
+              className="relative flex items-center w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus-within:ring-2 focus-within:ring-indigo-500 cursor-pointer bg-white"
+            >
+              <span className="pointer-events-none text-gray-900 flex-1">
                 {date === format(new Date(), 'yyyy-MM-dd')
                   ? 'Today'
                   : (() => {
@@ -152,13 +162,15 @@ export default function FuelRecordForm({
                       return format(new Date(y, m - 1, d), 'dd MMM yyyy');
                     })()}
               </span>
+              <Calendar size={18} className="text-gray-400 pointer-events-none" />
               <input
+                ref={dateInputRef}
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
               />
-            </label>
+            </div>
           </div>
 
           <div>
