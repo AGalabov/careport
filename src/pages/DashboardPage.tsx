@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Plus, Fuel, Bell } from 'lucide-react';
+import { useTranslation } from '../contexts/I18nProvider';
 import { useCar } from '../contexts/CarContext';
 import { useFuelRecords } from '../hooks/useFuelRecords';
 import { useReminders } from '../hooks/useReminders';
@@ -41,7 +42,14 @@ const urgencyDot: Record<string, string> = {
   inactive: 'bg-gray-300',
 };
 
-function LastFillCard({ record, prev }: { record: FuelRecord; prev?: FuelRecord }) {
+function LastFillCard({
+  record,
+  prev,
+}: {
+  record: FuelRecord;
+  prev?: FuelRecord;
+}) {
+  const { t, dateLocale } = useTranslation();
   const kmDriven = prev ? record.odometer - prev.odometer : null;
   const consumption = kmDriven && kmDriven > 0 ? (record.liters / kmDriven) * 100 : null;
   const equivalent =
@@ -50,15 +58,16 @@ function LastFillCard({ record, prev }: { record: FuelRecord; prev?: FuelRecord 
         ? consumption * (record.priceLpg / record.pricePetrol)
         : consumption * (record.pricePetrol / record.priceLpg)
       : null;
-  const typeLabel = record.fuelType.toUpperCase();
-  const equivLabel = record.fuelType === 'lpg' ? 'Petrol equiv.' : 'LPG equiv.';
+  const typeLabel = record.fuelType === 'lpg' ? t('fuel.lpg') : t('fuel.petrol');
+  const equivLabel =
+    record.fuelType === 'lpg' ? t('dashboard.petrolEquiv') : t('dashboard.lpgEquiv');
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
       <div className="flex items-center gap-2 mb-3">
         <Fuel size={16} className="text-indigo-600" />
         <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-          Last {typeLabel} Fill-Up
+          {t('dashboard.lastFillUp', { type: typeLabel })}
         </span>
         <span
           className={`ml-auto text-xs font-semibold px-1.5 py-0.5 rounded ${
@@ -73,19 +82,21 @@ function LastFillCard({ record, prev }: { record: FuelRecord; prev?: FuelRecord 
       <p className="text-2xl font-bold text-gray-900 mb-0.5">
         {record.odometer.toLocaleString()} km
       </p>
-      <p className="text-xs text-gray-400 mb-3">{format(record.date.toDate(), 'dd MMM yyyy')}</p>
+      <p className="text-xs text-gray-400 mb-3">
+        {format(record.date.toDate(), 'dd MMM yyyy', { locale: dateLocale })}
+      </p>
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
         <div>
-          <span className="text-gray-400">Filled </span>
+          <span className="text-gray-400">{t('dashboard.filled')} </span>
           <span className="font-medium text-gray-700">{record.liters.toFixed(2)} L</span>
         </div>
         <div>
-          <span className="text-gray-400">Cost </span>
+          <span className="text-gray-400">{t('dashboard.cost')} </span>
           <span className="font-medium text-gray-700">€{record.totalCost.toFixed(2)}</span>
         </div>
         {consumption !== null && (
           <div>
-            <span className="text-gray-400">Consumption </span>
+            <span className="text-gray-400">{t('dashboard.consumption')} </span>
             <span className="font-medium text-indigo-600">{consumption.toFixed(2)} L/100km</span>
           </div>
         )}
@@ -102,10 +113,25 @@ function LastFillCard({ record, prev }: { record: FuelRecord; prev?: FuelRecord 
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { activeCar, cars } = useCar();
   const { records, addRecord } = useFuelRecords(activeCar?.id ?? null);
   const { reminders, updateReminder } = useReminders(activeCar?.id ?? null);
   const [showForm, setShowForm] = useState(false);
+
+  const notificationCopy = useMemo(
+    () => ({
+      km: {
+        overdue: t('notifications.kmOverdue'),
+        remaining: (km: number) => t('notifications.kmRemaining', { km: km.toLocaleString() }),
+      },
+      date: {
+        dueToday: t('notifications.dateDueToday'),
+        dueIn: (days: number) => t('notifications.dateDueIn', { days }),
+      },
+    }),
+    [t],
+  );
 
   const lpgRecords = records.filter((r) => r.fuelType === 'lpg');
   const petrolRecords = records.filter((r) => r.fuelType === 'petrol');
@@ -115,25 +141,32 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (reminders.length > 0) {
-      checkDateReminders(reminders, updateReminder);
+      checkDateReminders(reminders, updateReminder, notificationCopy.date);
     }
-  }, [reminders.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mirror legacy trigger (count + locale copy)
+  }, [reminders.length, notificationCopy.date]);
 
   async function handleAddRecord(data: AddRecordInput) {
     await addRecord(data);
-    await checkKmReminders(data.odometer, activeCar!.id, reminders, updateReminder);
+    await checkKmReminders(
+      data.odometer,
+      activeCar!.id,
+      reminders,
+      updateReminder,
+      notificationCopy.km,
+    );
     setShowForm(false);
   }
 
   if (cars.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] px-4 text-center">
-        <p className="text-gray-500 mb-4">Add your car to get started</p>
+        <p className="text-gray-500 mb-4">{t('dashboard.noCars')}</p>
         <button
           onClick={() => navigate('/settings')}
           className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
         >
-          Go to Settings
+          {t('dashboard.goToSettings')}
         </button>
       </div>
     );
@@ -145,13 +178,11 @@ export default function DashboardPage() {
         <LastFillCard record={latestLpg} prev={lpgRecords[1]} />
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center text-sm text-gray-400">
-          No LPG fill-ups yet — log your first one below
+          {t('dashboard.noLpgFillUps')}
         </div>
       )}
 
-      {latestPetrol && (
-        <LastFillCard record={latestPetrol} prev={petrolRecords[1]} />
-      )}
+      {latestPetrol && <LastFillCard record={latestPetrol} prev={petrolRecords[1]} />}
 
       {reminders.filter((r) => r.isActive).length > 0 && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
@@ -159,14 +190,14 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2">
               <Bell size={16} className="text-indigo-600" />
               <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                Reminders
+                {t('dashboard.reminders')}
               </span>
             </div>
             <button
               onClick={() => navigate('/reminders')}
               className="text-xs text-indigo-600 hover:text-indigo-700"
             >
-              View all
+              {t('dashboard.viewAll')}
             </button>
           </div>
           <div className="space-y-2">
@@ -201,7 +232,7 @@ export default function DashboardPage() {
         className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl py-3.5 shadow-sm transition-colors"
       >
         <Plus size={18} />
-        Log Fill-Up
+        {t('dashboard.logFillUp')}
       </button>
 
       {showForm && (

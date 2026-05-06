@@ -1,24 +1,27 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from '../contexts/I18nProvider';
 import { useAsyncAction } from '../hooks/use-async-action';
+import type { TranslationKey } from '../contexts/translations';
 
-function formatSignInError(err: unknown): string {
+function formatSignInError(err: unknown): TranslationKey {
   if (err instanceof Error) {
     if (
       err.message.includes('invalid-credential') ||
       err.message.includes('wrong-password') ||
       err.message.includes('user-not-found')
     ) {
-      return 'Invalid email or password.';
+      return 'auth.invalidCredentials';
     }
-    return 'Sign-in failed. Please try again.';
+    return 'auth.signInFailed';
   }
-  return 'Sign-in failed. Please try again.';
+  return 'auth.signInFailed';
 }
 
 export default function AuthPage() {
   const { user, signIn, signInWithEmail } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -34,11 +37,14 @@ export default function AuthPage() {
     },
   );
 
-  const error = googleError
-    ? (googleError instanceof Error ? googleError.message : 'Google sign-in failed.')
-    : emailError
-      ? formatSignInError(emailError)
-      : '';
+  const errorKey =
+    googleError || emailError
+      ? googleError
+        ? 'auth.googleSignInFailed'
+        : formatSignInError(emailError)
+      : null;
+
+  const error = errorKey ? t(errorKey) : '';
 
   useEffect(() => {
     if (user) navigate('/', { replace: true });
@@ -57,11 +63,9 @@ export default function AuthPage() {
     <div className="min-h-svh flex flex-col items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <img src="/icon.svg" alt="Careport" className="w-20 h-20 mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900">Careport</h1>
-          <p className="text-sm text-gray-500 mt-1 text-center">
-            Track your car's fuel usage and maintenance reminders
-          </p>
+          <img src="/icon.svg" alt={t('common.appTitle')} className="w-20 h-20 mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900">{t('auth.title')}</h1>
+          <p className="text-sm text-gray-500 mt-1 text-center">{t('auth.subtitle')}</p>
         </div>
 
         {error && (
@@ -92,7 +96,7 @@ export default function AuthPage() {
               fill="#EA4335"
             />
           </svg>
-          Continue with Google
+          {t('auth.continueWithGoogle')}
         </button>
 
         <div className="relative my-6">
@@ -100,14 +104,14 @@ export default function AuthPage() {
             <div className="w-full border-t border-gray-200" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="bg-gray-50 px-3 text-gray-400">or</span>
+            <span className="bg-gray-50 px-3 text-gray-400">{t('auth.or')}</span>
           </div>
         </div>
 
         <form onSubmit={handleEmailSignIn} className="space-y-3">
           <input
             type="email"
-            placeholder="Email"
+            placeholder={t('auth.emailPlaceholder')}
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -115,7 +119,7 @@ export default function AuthPage() {
           />
           <input
             type="password"
-            placeholder="Password"
+            placeholder={t('auth.passwordPlaceholder')}
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -126,7 +130,7 @@ export default function AuthPage() {
             disabled={submitting}
             className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50"
           >
-            {submitting ? 'Signing in…' : 'Sign in with Email'}
+            {submitting ? t('auth.signingIn') : t('auth.signInWithEmail')}
           </button>
         </form>
       </div>

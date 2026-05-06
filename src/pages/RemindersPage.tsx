@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
+import { useTranslation } from '../contexts/I18nProvider';
 import { useCar } from '../contexts/CarContext';
 import { useFuelRecords } from '../hooks/useFuelRecords';
 import { useReminders } from '../hooks/useReminders';
@@ -8,6 +9,7 @@ import ReminderItem from '../components/reminders/ReminderItem';
 import type { Reminder } from '../types';
 
 export default function RemindersPage() {
+  const { t } = useTranslation();
   const { activeCar } = useCar();
   const { records } = useFuelRecords(activeCar?.id ?? null);
   const { reminders, loading, addReminder, updateReminder, deleteReminder, markServiced } =
@@ -18,7 +20,7 @@ export default function RemindersPage() {
   const latestOdometer = records[0]?.odometer;
 
   async function handleDelete(id: string) {
-    if (confirm('Delete this reminder?')) {
+    if (confirm(t('reminders.deleteConfirm'))) {
       await deleteReminder(id);
     }
   }
@@ -26,15 +28,13 @@ export default function RemindersPage() {
   return (
     <div className="px-4 pt-4 pb-6 max-w-lg mx-auto">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-semibold text-gray-900">Reminders</h2>
+        <h2 className="text-base font-semibold text-gray-900">{t('reminders.title')}</h2>
       </div>
 
       {loading ? (
-        <div className="text-center py-10 text-gray-400 text-sm">Loading…</div>
+        <div className="text-center py-10 text-gray-400 text-sm">{t('common.loading')}</div>
       ) : reminders.length === 0 ? (
-        <div className="text-center py-10 text-gray-400 text-sm">
-          No reminders yet. Tap + to add one.
-        </div>
+        <div className="text-center py-10 text-gray-400 text-sm">{t('reminders.empty')}</div>
       ) : (
         <div className="space-y-3">
           {reminders.map((reminder) => (
@@ -54,11 +54,10 @@ export default function RemindersPage() {
         </div>
       )}
 
-      {/* FAB */}
       <button
         onClick={() => setShowAdd(true)}
         className="fixed bottom-20 right-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-4 shadow-lg transition-colors z-30"
-        aria-label="Add reminder"
+        aria-label={t('reminders.form.submit')}
       >
         <Plus size={22} />
       </button>

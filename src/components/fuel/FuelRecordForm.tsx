@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react';
 import { format } from 'date-fns';
 import { X, Calendar } from 'lucide-react';
+import { useTranslation } from '../../contexts/I18nProvider';
+import type { TranslationKey } from '../../contexts/translations';
 import { useAsyncAction, getErrorMessage } from '../../hooks/use-async-action';
 import type { FuelRecord, FuelType } from '../../types';
 import type { AddRecordInput } from '../../hooks/useFuelRecords';
@@ -20,27 +22,20 @@ export default function FuelRecordForm({
   previousPetrolOdometer,
   initial,
 }: Props) {
+  const { t, isTranslationKey, dateLocale } = useTranslation();
   const [date, setDate] = useState(
-    initial
-      ? format(initial.date.toDate(), 'yyyy-MM-dd')
-      : format(new Date(), 'yyyy-MM-dd'),
+    initial ? format(initial.date.toDate(), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
   );
-  const [fuelType, setFuelType] = useState<FuelType>(
-    initial?.fuelType ?? 'lpg',
-  );
+  const [fuelType, setFuelType] = useState<FuelType>(initial?.fuelType ?? 'lpg');
   const [odometer, setOdometer] = useState(initial?.odometer?.toString() ?? '');
   const [liters, setLiters] = useState(initial?.liters?.toString() ?? '');
   const [priceLpg, setPriceLpg] = useState(initial?.priceLpg?.toString() ?? '');
-  const [pricePetrol, setPricePetrol] = useState(
-    initial?.pricePetrol?.toString() ?? '',
-  );
+  const [pricePetrol, setPricePetrol] = useState(initial?.pricePetrol?.toString() ?? '');
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const dateInputRef = useRef<HTMLInputElement>(null);
 
-  const prevOdometer =
-    fuelType === 'lpg' ? previousLpgOdometer : previousPetrolOdometer;
-  const kmDriven =
-    prevOdometer && odometer ? Number(odometer) - prevOdometer : null;
+  const prevOdometer = fuelType === 'lpg' ? previousLpgOdometer : previousPetrolOdometer;
+  const kmDriven = prevOdometer && odometer ? Number(odometer) - prevOdometer : null;
   const lpg = parseFloat(priceLpg) || 0;
   const petrol = parseFloat(pricePetrol) || 0;
   const litersNum = parseFloat(liters) || 0;
@@ -54,14 +49,20 @@ export default function FuelRecordForm({
         ? consumption * (lpg / petrol)
         : consumption * (petrol / lpg)
       : null;
-  const equivalentLabel = fuelType === 'lpg' ? 'Petrol equiv.' : 'LPG equiv.';
+  const equivalentLabel =
+    fuelType === 'lpg' ? t('fuel.form.equivPetrol') : t('fuel.form.equivLpg');
+
+  const fuelTypeLabel = fuelType === 'lpg' ? t('fuel.lpg') : t('fuel.petrol');
 
   const { loading: saving, error, trigger } = useAsyncAction(async () => {
-    if (!date) throw new Error('Date is required');
-    if (!odometer || isNaN(Number(odometer))) throw new Error('Valid odometer reading is required');
-    if (!liters || isNaN(Number(liters)) || Number(liters) <= 0) throw new Error('Valid fill amount is required');
-    if (!priceLpg || isNaN(Number(priceLpg)) || Number(priceLpg) <= 0) throw new Error('LPG price is required');
-    if (!pricePetrol || isNaN(Number(pricePetrol)) || Number(pricePetrol) <= 0) throw new Error('Petrol price is required');
+    if (!date) throw new Error('fuel.form.errors.dateRequired');
+    if (!odometer || isNaN(Number(odometer))) throw new Error('fuel.form.errors.odometerRequired');
+    if (!liters || isNaN(Number(liters)) || Number(liters) <= 0)
+      throw new Error('fuel.form.errors.litersRequired');
+    if (!priceLpg || isNaN(Number(priceLpg)) || Number(priceLpg) <= 0)
+      throw new Error('fuel.form.errors.priceLpgRequired');
+    if (!pricePetrol || isNaN(Number(pricePetrol)) || Number(pricePetrol) <= 0)
+      throw new Error('fuel.form.errors.pricePetrolRequired');
     await onSubmit({
       date: new Date(date),
       odometer: Number(odometer),
@@ -74,12 +75,23 @@ export default function FuelRecordForm({
     onClose();
   });
 
-  const errorMessage = getErrorMessage(error);
+  const rawError = getErrorMessage(error);
+  const errorMessage =
+    rawError && isTranslationKey(rawError) ? t(rawError as TranslationKey) : rawError;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     trigger();
   }
+
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const displayDate =
+    date === todayStr
+      ? t('fuel.form.today')
+      : (() => {
+          const [y, m, d] = date.split('-').map(Number);
+          return format(new Date(y, m - 1, d), 'dd MMM yyyy', { locale: dateLocale });
+        })();
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center">
@@ -87,41 +99,35 @@ export default function FuelRecordForm({
       <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <h2 className="text-base font-semibold text-gray-900">
-            {initial ? 'Edit Fill-Up' : 'Log Fill-Up'}
+            {initial ? t('fuel.form.titleEdit') : t('fuel.form.titleNew')}
           </h2>
-          <button
-            onClick={onClose}
-            className="p-1 text-gray-400 hover:text-gray-600"
-          >
+          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600">
             <X size={20} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="px-4 pb-6 space-y-4">
-          {/* Fuel type */}
           <div className="flex rounded-lg border border-gray-200 overflow-hidden">
-            {(['lpg', 'petrol'] as FuelType[]).map((t) => (
+            {(['lpg', 'petrol'] as FuelType[]).map((ft) => (
               <button
-                key={t}
+                key={ft}
                 type="button"
-                onClick={() => setFuelType(t)}
+                onClick={() => setFuelType(ft)}
                 className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
-                  fuelType === t
-                    ? t === 'lpg'
+                  fuelType === ft
+                    ? ft === 'lpg'
                       ? 'bg-indigo-600 text-white'
                       : 'bg-amber-500 text-white'
                     : 'bg-white text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                {t === 'lpg' ? 'LPG' : 'Petrol'}
+                {ft === 'lpg' ? t('fuel.lpg') : t('fuel.petrol')}
               </button>
             ))}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Date
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('fuel.form.date')}</label>
             <div
               onClick={() => {
                 try {
@@ -132,14 +138,7 @@ export default function FuelRecordForm({
               }}
               className="relative flex items-center w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus-within:ring-2 focus-within:ring-indigo-500 cursor-pointer bg-white"
             >
-              <span className="pointer-events-none text-gray-900 flex-1">
-                {date === format(new Date(), 'yyyy-MM-dd')
-                  ? 'Today'
-                  : (() => {
-                      const [y, m, d] = date.split('-').map(Number);
-                      return format(new Date(y, m - 1, d), 'dd MMM yyyy');
-                    })()}
-              </span>
+              <span className="pointer-events-none text-gray-900 flex-1">{displayDate}</span>
               <Calendar size={18} className="text-gray-400 pointer-events-none" />
               <input
                 ref={dateInputRef}
@@ -153,33 +152,37 @@ export default function FuelRecordForm({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Current odometer (km)
+              {t('fuel.form.odometer')}
             </label>
-            {prevOdometer && (
+            {prevOdometer !== undefined && (
               <p className="text-xs text-gray-400 mb-1">
-                Previous {fuelType.toUpperCase()} fill:{' '}
-                {prevOdometer.toLocaleString()} km
+                {t('fuel.form.previousFill', {
+                  type: fuelTypeLabel,
+                  km: prevOdometer.toLocaleString(),
+                })}
               </p>
             )}
             <input
               type="number"
               value={odometer}
               onChange={(e) => setOdometer(e.target.value)}
-              placeholder="e.g. 45230"
+              placeholder="45230"
               min="0"
               className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             {kmDriven !== null && kmDriven > 0 && (
               <p className="text-xs text-indigo-600 mt-1">
-                {kmDriven.toLocaleString()} km since last{' '}
-                {fuelType.toUpperCase()} fill-up
+                {t('fuel.form.kmSinceLast', {
+                  km: kmDriven.toLocaleString(),
+                  type: fuelTypeLabel,
+                })}
               </p>
             )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Liters filled ({fuelType.toUpperCase()})
+              {t('fuel.form.liters', { type: fuelTypeLabel })}
             </label>
             <input
               type="number"
@@ -192,11 +195,10 @@ export default function FuelRecordForm({
             />
           </div>
 
-          {/* Both prices always */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                LPG price / L
+                {t('fuel.form.priceLpg')}
               </label>
               <input
                 type="number"
@@ -210,7 +212,7 @@ export default function FuelRecordForm({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Petrol price / L
+                {t('fuel.form.pricePetrol')}
               </label>
               <input
                 type="number"
@@ -224,31 +226,24 @@ export default function FuelRecordForm({
             </div>
           </div>
 
-          {/* Live computed stats */}
           {(totalCost > 0 || consumption !== null) && (
             <div className="bg-indigo-50 rounded-lg p-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               {totalCost > 0 && (
                 <div>
-                  <p className="text-xs text-gray-500">Total cost</p>
-                  <p className="font-semibold text-gray-900">
-                    €{totalCost.toFixed(2)}
-                  </p>
+                  <p className="text-xs text-gray-500">{t('fuel.form.totalCost')}</p>
+                  <p className="font-semibold text-gray-900">€{totalCost.toFixed(2)}</p>
                 </div>
               )}
               {consumption !== null && (
                 <div>
-                  <p className="text-xs text-gray-500">Consumption</p>
-                  <p className="font-semibold text-gray-900">
-                    {consumption.toFixed(2)} L/100km
-                  </p>
+                  <p className="text-xs text-gray-500">{t('fuel.form.consumption')}</p>
+                  <p className="font-semibold text-gray-900">{consumption.toFixed(2)} L/100km</p>
                 </div>
               )}
               {equivalent !== null && (
                 <div className="col-span-2">
                   <p className="text-xs text-gray-500">{equivalentLabel}</p>
-                  <p className="font-semibold text-indigo-600">
-                    {equivalent.toFixed(2)} L/100km
-                  </p>
+                  <p className="font-semibold text-indigo-600">{equivalent.toFixed(2)} L/100km</p>
                 </div>
               )}
             </div>
@@ -256,14 +251,14 @@ export default function FuelRecordForm({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Notes{' '}
-              <span className="text-gray-400 font-normal">(optional)</span>
+              {t('fuel.form.notes')}{' '}
+              <span className="text-gray-400 font-normal">{t('fuel.form.notesOptional')}</span>
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              placeholder="Any notes about this fill-up…"
+              placeholder={t('fuel.form.notesPlaceholder')}
               className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
             />
           </div>
@@ -275,7 +270,7 @@ export default function FuelRecordForm({
             disabled={saving}
             className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium rounded-lg py-2.5 text-sm transition-colors"
           >
-            {saving ? 'Saving…' : initial ? 'Save Changes' : 'Log Fill-Up'}
+            {saving ? t('fuel.form.saving') : initial ? t('fuel.form.saveChanges') : t('fuel.form.submit')}
           </button>
         </form>
       </div>
