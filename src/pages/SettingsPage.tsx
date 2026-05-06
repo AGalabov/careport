@@ -3,6 +3,7 @@ import { LogOut, Bell, BellOff, Car as CarIcon, Download, Upload, Plus, Trash2 }
 import { useCar } from '../contexts/CarContext';
 import { useFuelRecords } from '../hooks/useFuelRecords';
 import { useAuth } from '../contexts/AuthContext';
+import { useAsyncAction } from '../hooks/use-async-action';
 import CarForm from '../components/cars/CarForm';
 import { requestNotificationPermission } from '../lib/notifications';
 import type { Car } from '../types';
@@ -29,11 +30,40 @@ export default function SettingsPage() {
   const [notifGranted, setNotifGranted] = useState(
     'Notification' in window ? Notification.permission === 'granted' : false,
   );
-  const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState('');
   const [importDate, setImportDate] = useState(`${new Date().getFullYear()}-01-01`);
   const [importFuelType, setImportFuelType] = useState<'lpg' | 'petrol'>('lpg');
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const importAction = useAsyncAction(async (file: File) => {
+    const text = await file.text();
+    const rows = parseCSV(text);
+    const firstCell = rows[0][0].toLowerCase();
+    const dataRows = isNaN(Number(firstCell)) ? rows.slice(1) : rows;
+    const baseDate = new Date(importDate);
+
+    let imported = 0;
+    let skipped = 0;
+    for (const row of dataRows) {
+      const [odoStr, litersStr, priceLpgStr, pricePetrolStr, notes] = row;
+      const odometer = parseNum(odoStr);
+      const liters = parseNum(litersStr);
+      const priceLpg = parseNum(priceLpgStr);
+      const pricePetrol = parseNum(pricePetrolStr);
+
+      if (isNaN(odometer) || isNaN(liters) || liters <= 0 || isNaN(priceLpg) || isNaN(pricePetrol)) {
+        skipped++;
+        continue;
+      }
+      const date = new Date(baseDate);
+      date.setDate(date.getDate() + imported);
+      await addRecord({ date, odometer, fuelType: importFuelType, liters, priceLpg, pricePetrol, notes: notes?.trim() });
+      imported++;
+    }
+    return `Imported ${imported} records${skipped > 0 ? `, skipped ${skipped} invalid rows` : ''}.`;
+  });
+
+  const importing = importAction.loading;
+  const importResult = importAction.data ?? (importAction.error ? 'Import failed. Check the file format.' : '');
 
   async function handleEnableNotifications() {
     const granted = await requestNotificationPermission();
@@ -56,44 +86,11 @@ export default function SettingsPage() {
     URL.revokeObjectURL(url);
   }
 
-  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !activeCar) return;
-    setImporting(true);
-    setImportResult('');
-    try {
-      const text = await file.text();
-      const rows = parseCSV(text);
-      const firstCell = rows[0][0].toLowerCase();
-      const dataRows = isNaN(Number(firstCell)) ? rows.slice(1) : rows;
-      const baseDate = new Date(importDate);
-
-      let imported = 0;
-      let skipped = 0;
-      for (const row of dataRows) {
-        // Columns: odometer, liters, price_lpg, price_petrol, [notes]
-        const [odoStr, litersStr, priceLpgStr, pricePetrolStr, notes] = row;
-        const odometer = parseNum(odoStr);
-        const liters = parseNum(litersStr);
-        const priceLpg = parseNum(priceLpgStr);
-        const pricePetrol = parseNum(pricePetrolStr);
-
-        if (isNaN(odometer) || isNaN(liters) || liters <= 0 || isNaN(priceLpg) || isNaN(pricePetrol)) {
-          skipped++;
-          continue;
-        }
-        const date = new Date(baseDate);
-        date.setDate(date.getDate() + imported);
-        await addRecord({ date, odometer, fuelType: importFuelType, liters, priceLpg, pricePetrol, notes: notes?.trim() });
-        imported++;
-      }
-      setImportResult(`Imported ${imported} records${skipped > 0 ? `, skipped ${skipped} invalid rows` : ''}.`);
-    } catch {
-      setImportResult('Import failed. Check the file format.');
-    } finally {
-      setImporting(false);
-      if (fileRef.current) fileRef.current.value = '';
-    }
+    importAction.trigger(file);
+    if (fileRef.current) fileRef.current.value = '';
   }
 
   return (
@@ -196,7 +193,6 @@ export default function SettingsPage() {
               onClick={async () => {
                 if (confirm(`Delete all ${records.length} fuel records? This cannot be undone.`)) {
                   await deleteAllRecords();
-                  setImportResult('');
                 }
               }}
               disabled={records.length === 0}

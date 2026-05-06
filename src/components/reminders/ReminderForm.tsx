@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { X } from 'lucide-react';
+import { useAsyncAction } from '../../hooks/use-async-action';
 import type { Reminder } from '../../types';
 
 interface Props {
@@ -66,44 +67,46 @@ export default function ReminderForm({ onClose, onSubmit, initial, currentOdomet
     initial?.alertBeforeDays ?? [30, 7, 1],
   );
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [validationError, setValidationError] = useState('');
 
-  async function handleSubmit(e: React.FormEvent) {
+  const submitAction = useAsyncAction(
+    async (data: Omit<Reminder, 'id' | 'userId' | 'carId' | 'createdAt'>) => {
+      await onSubmit(data);
+      onClose();
+    },
+  );
+
+  const saving = submitAction.loading;
+  const error = validationError || (submitAction.error ? 'Failed to save. Please try again.' : '');
+
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) { setError('Name is required'); return; }
+    setValidationError('');
+    if (!name.trim()) { setValidationError('Name is required'); return; }
     if (type === 'km') {
       if (!intervalKm || isNaN(Number(intervalKm)) || Number(intervalKm) <= 0) {
-        setError('Valid interval is required');
+        setValidationError('Valid interval is required');
         return;
       }
     } else {
-      if (!dueDate) { setError('Due date is required'); return; }
+      if (!dueDate) { setValidationError('Due date is required'); return; }
     }
-    setSaving(true);
-    try {
-      const base = { name: name.trim(), type, isActive };
-      if (type === 'km') {
-        await onSubmit({
-          ...base,
-          intervalKm: Number(intervalKm),
-          lastServiceKm: Number(lastServiceKm) || 0,
-          alertBeforeKm,
-          notifiedKmThresholds: initial?.notifiedKmThresholds ?? [],
-        });
-      } else {
-        await onSubmit({
-          ...base,
-          dueDate: new Date(dueDate) as unknown as Reminder['dueDate'],
-          alertBeforeDays,
-          notifiedDayThresholds: initial?.notifiedDayThresholds ?? [],
-        });
-      }
-      onClose();
-    } catch {
-      setError('Failed to save. Please try again.');
-    } finally {
-      setSaving(false);
+    const base = { name: name.trim(), type, isActive };
+    if (type === 'km') {
+      submitAction.trigger({
+        ...base,
+        intervalKm: Number(intervalKm),
+        lastServiceKm: Number(lastServiceKm) || 0,
+        alertBeforeKm,
+        notifiedKmThresholds: initial?.notifiedKmThresholds ?? [],
+      });
+    } else {
+      submitAction.trigger({
+        ...base,
+        dueDate: new Date(dueDate) as unknown as Reminder['dueDate'],
+        alertBeforeDays,
+        notifiedDayThresholds: initial?.notifiedDayThresholds ?? [],
+      });
     }
   }
 

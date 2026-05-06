@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { format } from 'date-fns';
 import { X, Calendar } from 'lucide-react';
+import { useAsyncAction } from '../../hooks/use-async-action';
 import type { FuelRecord, FuelType } from '../../types';
 import type { AddRecordInput } from '../../hooks/useFuelRecords';
 
@@ -34,8 +35,7 @@ export default function FuelRecordForm({
     initial?.pricePetrol?.toString() ?? '',
   );
   const [notes, setNotes] = useState(initial?.notes ?? '');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [validationError, setValidationError] = useState('');
   const dateInputRef = useRef<HTMLInputElement>(null);
 
   const prevOdometer =
@@ -57,22 +57,31 @@ export default function FuelRecordForm({
       : null;
   const equivalentLabel = fuelType === 'lpg' ? 'Petrol equiv.' : 'LPG equiv.';
 
-  async function handleSubmit(e: React.FormEvent) {
+  const submitAction = useAsyncAction(async (data: AddRecordInput) => {
+    await onSubmit(data);
+    onClose();
+  });
+
+  const saving = submitAction.loading;
+  const error = validationError || (submitAction.error ? 'Failed to save. Please try again.' : '');
+
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setValidationError('');
     if (!date) {
-      setError('Date is required');
+      setValidationError('Date is required');
       return;
     }
     if (!odometer || isNaN(Number(odometer))) {
-      setError('Valid odometer reading is required');
+      setValidationError('Valid odometer reading is required');
       return;
     }
     if (!liters || isNaN(Number(liters)) || Number(liters) <= 0) {
-      setError('Valid fill amount is required');
+      setValidationError('Valid fill amount is required');
       return;
     }
     if (!priceLpg || isNaN(Number(priceLpg)) || Number(priceLpg) <= 0) {
-      setError('LPG price is required');
+      setValidationError('LPG price is required');
       return;
     }
     if (
@@ -80,27 +89,18 @@ export default function FuelRecordForm({
       isNaN(Number(pricePetrol)) ||
       Number(pricePetrol) <= 0
     ) {
-      setError('Petrol price is required');
+      setValidationError('Petrol price is required');
       return;
     }
-    setSaving(true);
-    try {
-      onSubmit({
-        date: new Date(date),
-        odometer: Number(odometer),
-        fuelType,
-        liters: Number(liters),
-        priceLpg: Number(priceLpg),
-        pricePetrol: Number(pricePetrol),
-        notes: notes.trim(),
-      });
-      onClose();
-    } catch (err) {
-      console.error('Failed to save fuel record:', err);
-      setError('Failed to save. Please try again.');
-    } finally {
-      setSaving(false);
-    }
+    submitAction.trigger({
+      date: new Date(date),
+      odometer: Number(odometer),
+      fuelType,
+      liters: Number(liters),
+      priceLpg: Number(priceLpg),
+      pricePetrol: Number(pricePetrol),
+      notes: notes.trim(),
+    });
   }
 
   return (

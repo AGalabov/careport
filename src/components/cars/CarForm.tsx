@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
+import { useAsyncAction } from '../../hooks/use-async-action';
 import type { Car } from '../../types';
 
 interface Props {
@@ -14,28 +15,28 @@ export default function CarForm({ onClose, onSubmit, initial }: Props) {
   const [model, setModel] = useState(initial?.model ?? '');
   const [year, setYear] = useState(initial?.year?.toString() ?? '');
   const [odometer, setOdometer] = useState(initial?.initialOdometer?.toString() ?? '');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [validationError, setValidationError] = useState('');
 
-  async function handleSubmit(e: React.FormEvent) {
+  const submitAction = useAsyncAction(async (data: Omit<Car, 'id' | 'userId' | 'createdAt'>) => {
+    await onSubmit(data);
+    onClose();
+  });
+
+  const saving = submitAction.loading;
+  const error = validationError || (submitAction.error ? 'Failed to save. Please try again.' : '');
+
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) { setError('Name is required'); return; }
-    if (!odometer || isNaN(Number(odometer))) { setError('Valid odometer reading is required'); return; }
-    setSaving(true);
-    try {
-      await onSubmit({
-        name: name.trim(),
-        make: make.trim() || undefined,
-        model: model.trim() || undefined,
-        year: year ? Number(year) : undefined,
-        initialOdometer: Number(odometer),
-      });
-      onClose();
-    } catch {
-      setError('Failed to save. Please try again.');
-    } finally {
-      setSaving(false);
-    }
+    setValidationError('');
+    if (!name.trim()) { setValidationError('Name is required'); return; }
+    if (!odometer || isNaN(Number(odometer))) { setValidationError('Valid odometer reading is required'); return; }
+    submitAction.trigger({
+      name: name.trim(),
+      make: make.trim() || undefined,
+      model: model.trim() || undefined,
+      year: year ? Number(year) : undefined,
+      initialOdometer: Number(odometer),
+    });
   }
 
   return (
