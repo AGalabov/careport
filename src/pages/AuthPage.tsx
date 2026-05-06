@@ -32,9 +32,7 @@ export default function AuthPage() {
       await signInWithEmail(email, password);
     } catch (err: unknown) {
       if (err instanceof Error) {
-        if (err.message.includes('not authorized')) {
-          setError(err.message);
-        } else if (err.message.includes('invalid-credential') || err.message.includes('wrong-password') || err.message.includes('user-not-found')) {
+        if (err.message.includes('invalid-credential') || err.message.includes('wrong-password') || err.message.includes('user-not-found')) {
           setError('Invalid email or password.');
         } else {
           setError('Sign-in failed. Please try again.');

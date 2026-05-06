@@ -35,7 +35,7 @@ src/
 │       ├── ReminderForm.tsx       — add/edit reminder modal (km or date)
 │       └── ReminderItem.tsx       — single reminder card with status dot
 ├── contexts/
-│   ├── AuthContext.tsx            — Firebase auth state + signIn/signInWithEmail/signOut + allowlist
+│   ├── AuthContext.tsx            — Firebase auth state + signIn/signInWithEmail/signOut
 │   └── CarContext.tsx             — cars list, active car, CRUD; auto-selects if 1 car
 ├── hooks/
 │   ├── useFuelRecords.ts          — Firestore CRUD for fuel records
@@ -69,13 +69,11 @@ All data lives under `users/{userId}/`:
 - `notifications.ts:checkDateReminders` — for each active date reminder, if `daysRemaining <= threshold` and threshold not yet notified → show notification + record in `notifiedDayThresholds`
 - Reset `notifiedDayThresholds` → update the reminder with a new `dueDate`
 
-## Auth & Allowlist
+## Auth
 
 Two sign-in methods: **Google** and **Email/Password**.
 
-Email/password accounts must be created manually in Firebase Console (Authentication → Add user). There is no sign-up form.
-
-An optional `VITE_ALLOWED_EMAILS` env var (comma-separated) restricts both sign-in methods to the listed emails. If empty or unset, all authenticated users are allowed.
+Email/password accounts must be created manually in Firebase Console (Authentication → Add user). There is no sign-up form. To prevent unauthorized account creation via the REST API, disable self-service sign-up in Firebase Console → Authentication → Settings → User actions → uncheck "Enable create (sign-up)".
 
 ## CSV Import Format
 

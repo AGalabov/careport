@@ -8,15 +8,6 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 
-const allowedEmails: string[] = import.meta.env.VITE_ALLOWED_EMAILS
-  ? import.meta.env.VITE_ALLOWED_EMAILS.split(',').map((e: string) => e.trim().toLowerCase())
-  : [];
-
-function isEmailAllowed(email: string | null): boolean {
-  if (allowedEmails.length === 0) return true;
-  return !!email && allowedEmails.includes(email.toLowerCase());
-}
-
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
@@ -39,19 +30,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function signIn() {
-    const result = await signInWithPopup(auth, googleProvider);
-    if (!isEmailAllowed(result.user.email)) {
-      await firebaseSignOut(auth);
-      throw new Error('This account is not authorized to use this app.');
-    }
+    await signInWithPopup(auth, googleProvider);
   }
 
   async function signInWithEmail(email: string, password: string) {
-    const result = await signInWithEmailAndPassword(auth, email, password);
-    if (!isEmailAllowed(result.user.email)) {
-      await firebaseSignOut(auth);
-      throw new Error('This account is not authorized to use this app.');
-    }
+    await signInWithEmailAndPassword(auth, email, password);
   }
 
   async function signOut() {
