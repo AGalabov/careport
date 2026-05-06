@@ -20,11 +20,17 @@ async function showNotification(title: string, body: string): Promise<void> {
   new Notification(title, { body, icon: '/icon.svg' });
 }
 
+export interface KmReminderCopy {
+  overdue: string;
+  remaining: (kmRounded: number) => string;
+}
+
 export async function checkKmReminders(
   currentOdometer: number,
   carId: string,
   reminders: Reminder[],
   updateReminder: (id: string, data: Partial<Omit<Reminder, 'id'>>) => Promise<void>,
+  copy: KmReminderCopy,
 ): Promise<void> {
   const kmReminders = reminders.filter(
     (r) => r.isActive && r.type === 'km' && r.carId === carId,
@@ -47,8 +53,8 @@ export async function checkKmReminders(
       if (!notifiedKmThresholds.includes(threshold) && kmRemaining <= threshold) {
         const body =
           kmRemaining <= 0
-            ? 'Overdue — service now!'
-            : `~${Math.round(kmRemaining).toLocaleString()} km remaining`;
+            ? copy.overdue
+            : copy.remaining(Math.round(kmRemaining));
         await showNotification(reminder.name, body);
         newlyNotified.push(threshold);
       }
@@ -62,9 +68,15 @@ export async function checkKmReminders(
   }
 }
 
+export interface DateReminderCopy {
+  dueToday: string;
+  dueIn: (days: number) => string;
+}
+
 export async function checkDateReminders(
   reminders: Reminder[],
   updateReminder: (id: string, data: Partial<Omit<Reminder, 'id'>>) => Promise<void>,
+  copy: DateReminderCopy,
 ): Promise<void> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -87,9 +99,7 @@ export async function checkDateReminders(
     for (const threshold of thresholds) {
       if (!notified.includes(threshold) && daysRemaining <= threshold) {
         const body =
-          daysRemaining === 0
-            ? 'Due today!'
-            : `Due in ${daysRemaining} day${daysRemaining === 1 ? '' : 's'}`;
+          daysRemaining === 0 ? copy.dueToday : copy.dueIn(daysRemaining);
         await showNotification(reminder.name, body);
         newlyNotified.push(threshold);
       }

@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { I18nProvider, useTranslation } from './contexts/I18nProvider';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CarProvider } from './contexts/CarContext';
 import Layout from './components/layout/Layout';
@@ -10,10 +11,12 @@ import SettingsPage from './pages/SettingsPage';
 
 function RequireAuth() {
   const { user, loading } = useAuth();
+  const { t } = useTranslation();
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-svh bg-gray-50">
+      <div className="flex flex-col items-center justify-center gap-3 min-h-svh bg-gray-50">
         <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <span className="text-sm text-gray-500">{t('common.loading')}</span>
       </div>
     );
   }
@@ -22,7 +25,8 @@ function RequireAuth() {
 
 export default function App() {
   return (
-    <Router>
+    <I18nProvider>
+      <Router>
       <AuthProvider>
         <CarProvider>
           <Routes>
@@ -39,6 +43,7 @@ export default function App() {
           </Routes>
         </CarProvider>
       </AuthProvider>
-    </Router>
+      </Router>
+    </I18nProvider>
   );
 }

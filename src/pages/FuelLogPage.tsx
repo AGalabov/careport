@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { useTranslation } from '../contexts/I18nProvider';
 import { useCar } from '../contexts/CarContext';
 import { useFuelLog } from '../hooks/useFuelLog';
 import { useReminders } from '../hooks/useReminders';
@@ -10,6 +11,7 @@ import type { FuelRecord, FuelType } from '../types';
 import type { AddRecordInput } from '../hooks/useFuelRecords';
 
 export default function FuelLogPage() {
+  const { t } = useTranslation();
   const { activeCar } = useCar();
   const {
     availableYears,
@@ -23,6 +25,14 @@ export default function FuelLogPage() {
     deleteRecord,
   } = useFuelLog(activeCar?.id ?? null);
   const { reminders, updateReminder } = useReminders(activeCar?.id ?? null);
+
+  const notificationCopy = useMemo(
+    () => ({
+      overdue: t('notifications.kmOverdue'),
+      remaining: (km: number) => t('notifications.kmRemaining', { km: km.toLocaleString() }),
+    }),
+    [t],
+  );
 
   const currentYear = new Date().getFullYear();
   const [expandedYears, setExpandedYears] = useState<Set<number>>(new Set([currentYear]));
@@ -71,7 +81,7 @@ export default function FuelLogPage() {
   async function handleAdd(data: AddRecordInput) {
     await addRecord(data);
     if (activeCar) {
-      await checkKmReminders(data.odometer, activeCar.id, reminders, updateReminder);
+      await checkKmReminders(data.odometer, activeCar.id, reminders, updateReminder, notificationCopy);
     }
     setShowAdd(false);
   }
@@ -82,31 +92,32 @@ export default function FuelLogPage() {
   }
 
   async function handleDelete(id: string) {
-    if (confirm('Delete this fill-up record?')) {
+    if (confirm(t('fuel.deleteConfirm'))) {
       await deleteRecord(id);
     }
   }
 
+  const fuelTypeLabel = fuelType === 'lpg' ? t('fuel.lpg') : t('fuel.petrol');
+
   return (
     <div className="px-4 pt-4 pb-6 max-w-lg mx-auto">
-      <h2 className="text-base font-semibold text-gray-900 mb-4">Fuel Log</h2>
+      <h2 className="text-base font-semibold text-gray-900 mb-4">{t('fuel.title')}</h2>
 
-      {/* Fuel type toggle */}
       <div className="flex rounded-lg border border-gray-200 overflow-hidden mb-4">
-        {(['lpg', 'petrol'] as FuelType[]).map((t) => (
+        {(['lpg', 'petrol'] as FuelType[]).map((ft) => (
           <button
-            key={t}
+            key={ft}
             type="button"
-            onClick={() => setFuelType(t)}
+            onClick={() => setFuelType(ft)}
             className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
-              fuelType === t
-                ? t === 'lpg'
+              fuelType === ft
+                ? ft === 'lpg'
                   ? 'bg-indigo-600 text-white'
                   : 'bg-amber-500 text-white'
                 : 'bg-white text-gray-600 hover:bg-gray-50'
             }`}
           >
-            {t === 'lpg' ? 'LPG' : 'Petrol'}
+            {ft === 'lpg' ? t('fuel.lpg') : t('fuel.petrol')}
           </button>
         ))}
       </div>
@@ -121,9 +132,8 @@ export default function FuelLogPage() {
             const isExpanded = expandedYears.has(year);
             const loaded = isYearLoaded(year);
             const isLoadingYear = yearLoading.has(year);
-            const yearRecords = isExpanded && loaded
-              ? getYear(year).filter((r) => r.fuelType === fuelType)
-              : [];
+            const yearRecords =
+              isExpanded && loaded ? getYear(year).filter((r) => r.fuelType === fuelType) : [];
 
             return (
               <div key={year}>
@@ -149,7 +159,7 @@ export default function FuelLogPage() {
                   <div className="space-y-2 mb-2">
                     {yearRecords.length === 0 ? (
                       <p className="text-sm text-gray-400 text-center py-4">
-                        No {fuelType.toUpperCase()} fill-ups for {year}
+                        {t('fuel.noRecords', { type: fuelTypeLabel, year: String(year) })}
                       </p>
                     ) : (
                       yearRecords.map((record) => (
@@ -173,7 +183,7 @@ export default function FuelLogPage() {
       <button
         onClick={() => setShowAdd(true)}
         className="fixed bottom-20 right-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-4 shadow-lg transition-colors z-30"
-        aria-label="Add fill-up"
+        aria-label={t('fuel.addFillUp')}
       >
         <Plus size={22} />
       </button>

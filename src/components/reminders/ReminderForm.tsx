@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { X } from 'lucide-react';
+import { useTranslation } from '../../contexts/I18nProvider';
+import type { TranslationKey } from '../../contexts/translations';
 import { useAsyncAction, getErrorMessage } from '../../hooks/use-async-action';
 import type { Reminder } from '../../types';
 
@@ -18,12 +20,12 @@ function ThresholdSelector({
   presets,
   selected,
   onChange,
-  unit,
+  unitLabel,
 }: {
   presets: number[];
   selected: number[];
   onChange: (vals: number[]) => void;
-  unit: string;
+  unitLabel: string;
 }) {
   function toggle(val: number) {
     onChange(
@@ -43,7 +45,7 @@ function ThresholdSelector({
               : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-400'
           }`}
         >
-          {p.toLocaleString()} {unit}
+          {p.toLocaleString()} {unitLabel}
         </button>
       ))}
     </div>
@@ -51,6 +53,7 @@ function ThresholdSelector({
 }
 
 export default function ReminderForm({ onClose, onSubmit, initial, currentOdometer }: Props) {
+  const { t, isTranslationKey } = useTranslation();
   const [name, setName] = useState(initial?.name ?? '');
   const [type, setType] = useState<'km' | 'date'>(initial?.type ?? 'km');
   const [intervalKm, setIntervalKm] = useState(initial?.intervalKm?.toString() ?? '10000');
@@ -69,13 +72,13 @@ export default function ReminderForm({ onClose, onSubmit, initial, currentOdomet
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
 
   const { loading: saving, error, trigger } = useAsyncAction(async () => {
-    if (!name.trim()) throw new Error('Name is required');
+    if (!name.trim()) throw new Error('reminders.form.errors.nameRequired');
     if (type === 'km') {
       if (!intervalKm || isNaN(Number(intervalKm)) || Number(intervalKm) <= 0) {
-        throw new Error('Valid interval is required');
+        throw new Error('reminders.form.errors.intervalRequired');
       }
     } else {
-      if (!dueDate) throw new Error('Due date is required');
+      if (!dueDate) throw new Error('reminders.form.errors.dueDateRequired');
     }
     const base = { name: name.trim(), type, isActive };
     if (type === 'km') {
@@ -97,7 +100,9 @@ export default function ReminderForm({ onClose, onSubmit, initial, currentOdomet
     onClose();
   });
 
-  const errorMessage = getErrorMessage(error);
+  const rawError = getErrorMessage(error);
+  const errorMessage =
+    rawError && isTranslationKey(rawError) ? t(rawError as TranslationKey) : rawError;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -110,7 +115,7 @@ export default function ReminderForm({ onClose, onSubmit, initial, currentOdomet
       <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <h2 className="text-base font-semibold text-gray-900">
-            {initial ? 'Edit Reminder' : 'Add Reminder'}
+            {initial ? t('reminders.form.titleEdit') : t('reminders.form.titleNew')}
           </h2>
           <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600">
             <X size={20} />
@@ -119,31 +124,31 @@ export default function ReminderForm({ onClose, onSubmit, initial, currentOdomet
 
         <form onSubmit={handleSubmit} className="px-4 pb-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('reminders.form.name')}
+            </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Oil Change, Insurance Renewal"
+              placeholder={t('reminders.form.namePlaceholder')}
               className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('reminders.form.type')}</label>
             <div className="flex rounded-lg border border-gray-200 overflow-hidden">
-              {(['km', 'date'] as const).map((t) => (
+              {(['km', 'date'] as const).map((tt) => (
                 <button
-                  key={t}
+                  key={tt}
                   type="button"
-                  onClick={() => setType(t)}
+                  onClick={() => setType(tt)}
                   className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                    type === t
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                    type === tt ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
                   }`}
                 >
-                  {t === 'km' ? 'Kilometer-based' : 'Date-based'}
+                  {tt === 'km' ? t('reminders.form.kmBased') : t('reminders.form.dateBased')}
                 </button>
               ))}
             </div>
@@ -154,7 +159,7 @@ export default function ReminderForm({ onClose, onSubmit, initial, currentOdomet
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Every (km)
+                    {t('reminders.form.everyKm')}
                   </label>
                   <input
                     type="number"
@@ -167,7 +172,7 @@ export default function ReminderForm({ onClose, onSubmit, initial, currentOdomet
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Last service (km)
+                    {t('reminders.form.lastServiceKm')}
                   </label>
                   <input
                     type="number"
@@ -181,13 +186,13 @@ export default function ReminderForm({ onClose, onSubmit, initial, currentOdomet
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Alert me when km remaining ≤
+                  {t('reminders.form.alertKm')}
                 </label>
                 <ThresholdSelector
                   presets={KM_PRESETS}
                   selected={alertBeforeKm}
                   onChange={setAlertBeforeKm}
-                  unit="km"
+                  unitLabel={t('reminders.form.unitKm')}
                 />
               </div>
             </>
@@ -195,7 +200,7 @@ export default function ReminderForm({ onClose, onSubmit, initial, currentOdomet
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Due date
+                  {t('reminders.form.dueDate')}
                 </label>
                 <input
                   type="date"
@@ -206,20 +211,20 @@ export default function ReminderForm({ onClose, onSubmit, initial, currentOdomet
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Alert me when days remaining ≤
+                  {t('reminders.form.alertDays')}
                 </label>
                 <ThresholdSelector
                   presets={DAY_PRESETS}
                   selected={alertBeforeDays}
                   onChange={setAlertBeforeDays}
-                  unit="days"
+                  unitLabel={t('reminders.form.unitDays')}
                 />
               </div>
             </>
           )}
 
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700">Active</span>
+            <span className="text-sm font-medium text-gray-700">{t('reminders.form.active')}</span>
             <button
               type="button"
               onClick={() => setIsActive((v) => !v)}
@@ -242,7 +247,7 @@ export default function ReminderForm({ onClose, onSubmit, initial, currentOdomet
             disabled={saving}
             className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium rounded-lg py-2.5 text-sm transition-colors"
           >
-            {saving ? 'Saving…' : initial ? 'Save Changes' : 'Add Reminder'}
+            {saving ? t('reminders.form.saving') : initial ? t('reminders.form.saveChanges') : t('reminders.form.submit')}
           </button>
         </form>
       </div>

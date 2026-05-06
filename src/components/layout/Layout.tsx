@@ -2,9 +2,11 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 import BottomNav from './BottomNav';
+import { useTranslation } from '../../contexts/I18nProvider';
 import { useCar } from '../../contexts/CarContext';
 
 export default function Layout() {
+  const { t } = useTranslation();
   const { cars, activeCar, selectCar, loading } = useCar();
   const navigate = useNavigate();
 
@@ -17,7 +19,7 @@ export default function Layout() {
   return (
     <div className="flex flex-col min-h-svh bg-gray-50">
       <header className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between z-30">
-        <span className="text-lg font-semibold text-indigo-600 tracking-tight">Careport</span>
+        <span className="text-lg font-semibold text-indigo-600 tracking-tight">{t('common.appTitle')}</span>
 
         {cars.length > 1 && activeCar && (
           <button
