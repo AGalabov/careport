@@ -1,0 +1,16 @@
+export const dashboard = {
+  addCarPrompt: 'Add your car to get started',
+  goToSettings: 'Go to Settings',
+  noLpgYet: 'No LPG fill-ups yet — log your first one below',
+  lastFillUp: 'Last %{type} Fill-Up',
+  reminders: 'Reminders',
+  viewAll: 'View all',
+  logFillUp: 'Log Fill-Up',
+  filled: 'Filled ',
+  cost: 'Cost ',
+  consumption: 'Consumption ',
+  petrolEquiv: 'Petrol equiv.',
+  lpgEquiv: 'LPG equiv.',
+  km: ' km',
+  consumptionUnit: ' L/100km',
+} as const;
