@@ -1,5 +1,7 @@
 import { format } from 'date-fns';
 import { Trash2, Pencil } from 'lucide-react';
+import { useTranslation } from '../../contexts/I18nContext';
+import { getDateFnsLocale, getIntlLocale } from '../../lib/date-locale';
 import type { FuelRecord } from '../../types';
 
 interface Props {
@@ -10,6 +12,13 @@ interface Props {
 }
 
 export default function FuelRecordItem({ record, previousSameTypeOdometer, onEdit, onDelete }: Props) {
+  const { t, localeKey } = useTranslation();
+  const dateLocale = getDateFnsLocale(localeKey);
+  const intlLocale = getIntlLocale(localeKey);
+
+  const fuelTypeLabel =
+    record.fuelType === 'lpg' ? t('fuel.item.fuelTypes.lpg') : t('fuel.item.fuelTypes.petrol');
+
   const kmDriven =
     previousSameTypeOdometer !== undefined ? record.odometer - previousSameTypeOdometer : null;
   const consumption =
@@ -20,7 +29,8 @@ export default function FuelRecordItem({ record, previousSameTypeOdometer, onEdi
         ? consumption * (record.priceLpg / record.pricePetrol)
         : consumption * (record.pricePetrol / record.priceLpg)
       : null;
-  const equivalentLabel = record.fuelType === 'lpg' ? 'petrol equiv.' : 'LPG equiv.';
+  const equivalentLabel =
+    record.fuelType === 'lpg' ? t('fuel.item.petrolEquivShort') : t('fuel.item.lpgEquivShort');
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
@@ -34,12 +44,15 @@ export default function FuelRecordItem({ record, previousSameTypeOdometer, onEdi
                   : 'bg-amber-100 text-amber-700'
               }`}
             >
-              {record.fuelType.toUpperCase()}
+              {fuelTypeLabel}
             </span>
-            <p className="text-xs text-gray-400">{format(record.date.toDate(), 'dd MMM yyyy')}</p>
+            <p className="text-xs text-gray-400">
+              {format(record.date.toDate(), 'dd MMM yyyy', { locale: dateLocale })}
+            </p>
           </div>
           <p className="text-base font-semibold text-gray-900">
-            {record.odometer.toLocaleString()} km
+            {record.odometer.toLocaleString(intlLocale)}
+            {t('dashboard.km')}
           </p>
         </div>
         <div className="flex gap-1">
@@ -61,19 +74,27 @@ export default function FuelRecordItem({ record, previousSameTypeOdometer, onEdi
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
         <span>{record.liters.toFixed(2)} L</span>
         <span>
-          LPG €{record.priceLpg.toFixed(3)} · Petrol €{record.pricePetrol.toFixed(3)}
+          {t('fuel.item.pricesLine', {
+            lpg: record.priceLpg.toFixed(3),
+            petrol: record.pricePetrol.toFixed(3),
+          })}
         </span>
         <span className="font-medium text-gray-900">€{record.totalCost.toFixed(2)}</span>
         {consumption !== null && (
-          <span className="text-indigo-600 font-medium">{consumption.toFixed(2)} L/100km</span>
+          <span className="text-indigo-600 font-medium">
+            {consumption.toFixed(2)}
+            {t('dashboard.consumptionUnit')}
+          </span>
         )}
         {equivalent !== null && (
           <span className="text-gray-500">
-            {equivalent.toFixed(2)} L/100km {equivalentLabel}
+            {equivalent.toFixed(2)}
+            {t('dashboard.consumptionUnit')}
+            {t('fuel.item.equivSuffix', { equiv: equivalentLabel })}
           </span>
         )}
         {kmDriven !== null && kmDriven > 0 && (
-          <span className="text-gray-400">{kmDriven.toLocaleString()} km</span>
+          <span className="text-gray-400">{kmDriven.toLocaleString(intlLocale)} km</span>
         )}
       </div>
 

@@ -1,12 +1,14 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { LogOut, Bell, BellOff, Car as CarIcon, Download, Upload, Plus, Trash2 } from 'lucide-react';
 import { useCar } from '../contexts/CarContext';
 import { useFuelRecords } from '../hooks/useFuelRecords';
 import { useAuth } from '../contexts/AuthContext';
 import { useAsyncAction } from '../hooks/use-async-action';
+import { useTranslation } from '../contexts/I18nContext';
 import CarForm from '../components/cars/CarForm';
 import { requestNotificationPermission } from '../lib/notifications';
 import type { Car } from '../types';
+import type { SupportedLocale } from '../contexts/I18nContext';
 
 function parseCSV(content: string): string[][] {
   const lines = content.trim().split('\n');
@@ -17,11 +19,11 @@ function parseCSV(content: string): string[][] {
 }
 
 function parseNum(val: string): number {
-  // Remove thousands separators (commas or spaces), keep decimal point
   return Number(val.replace(/,(?=\d{3})/g, '').replace(/\s/g, ''));
 }
 
 export default function SettingsPage() {
+  const { t, localeKey, locales, setLocale } = useTranslation();
   const { user, signOut } = useAuth();
   const { cars, activeCar, addCar, updateCar, deleteCar } = useCar();
   const { records, addRecord, deleteAllRecords } = useFuelRecords(activeCar?.id ?? null);
@@ -64,10 +66,22 @@ export default function SettingsPage() {
       await addRecord({ date, odometer, fuelType: importFuelType, liters, priceLpg, pricePetrol, notes: notes?.trim() });
       imported++;
     }
-    return `Imported ${imported} records${skipped > 0 ? `, skipped ${skipped} invalid rows` : ''}.`;
+    return { imported, skipped };
   });
 
-  const importResult = importData ?? (importError ? 'Import failed. Check the file format.' : '');
+  const importResultText = useMemo(() => {
+    if (importData) {
+      return t('settings.importResult', {
+        imported: String(importData.imported),
+        skipped:
+          importData.skipped > 0
+            ? t('settings.importSkippedPart', { skipped: String(importData.skipped) })
+            : '',
+      });
+    }
+    if (importError) return t('settings.importFailed');
+    return '';
+  }, [importData, importError, t]);
 
   async function handleEnableNotifications() {
     const granted = await requestNotificationPermission();
@@ -97,12 +111,15 @@ export default function SettingsPage() {
     if (fileRef.current) fileRef.current.value = '';
   }
 
+  function handleLocaleChange(next: SupportedLocale['key']) {
+    setLocale(next);
+  }
+
   return (
     <div className="px-4 pt-4 pb-6 max-w-lg mx-auto space-y-6">
-      {/* Cars */}
       <section>
         <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-          My Cars
+          {t('settings.myCars')}
         </h3>
         <div className="space-y-2">
           {cars.map((car) => (
@@ -126,14 +143,14 @@ export default function SettingsPage() {
                   onClick={() => setEditingCar(car)}
                   className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
                 >
-                  Edit
+                  {t('common.edit')}
                 </button>
                 {cars.length > 1 && (
                   <button
                     onClick={() => deleteCar(car.id)}
                     className="text-xs text-red-500 hover:text-red-600 font-medium"
                   >
-                    Delete
+                    {t('common.delete')}
                   </button>
                 )}
               </div>
@@ -145,15 +162,14 @@ export default function SettingsPage() {
             className="w-full flex items-center justify-center gap-2 border border-dashed border-gray-300 hover:border-indigo-400 text-gray-500 hover:text-indigo-600 rounded-xl py-3 text-sm transition-colors"
           >
             <Plus size={16} />
-            Add another car
+            {t('settings.addAnotherCar')}
           </button>
         </div>
       </section>
 
-      {/* Notifications */}
       <section>
         <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-          Notifications
+          {t('settings.notifications')}
         </h3>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <div className="flex items-center justify-between">
@@ -165,12 +181,12 @@ export default function SettingsPage() {
               )}
               <div>
                 <p className="text-sm font-medium text-gray-900">
-                  {notifGranted ? 'Notifications enabled' : 'Notifications disabled'}
+                  {notifGranted ? t('settings.notificationsEnabled') : t('settings.notificationsDisabled')}
                 </p>
                 <p className="text-xs text-gray-400">
                   {notifGranted
-                    ? 'You will be alerted for upcoming reminders'
-                    : 'Enable to get fuel & maintenance alerts'}
+                    ? t('settings.notificationsEnabledHint')
+                    : t('settings.notificationsDisabledHint')}
                 </p>
               </div>
             </div>
@@ -179,23 +195,51 @@ export default function SettingsPage() {
                 onClick={handleEnableNotifications}
                 className="text-sm text-indigo-600 font-medium hover:text-indigo-700 ml-2"
               >
-                Enable
+                {t('common.enable')}
               </button>
             )}
           </div>
         </div>
       </section>
 
-      {/* Data */}
+      <section>
+        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+          {t('settings.language')}
+        </h3>
+        <p className="text-xs text-gray-400 mb-2">{t('settings.languageHint')}</p>
+        <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+          {locales.map((loc) => (
+            <button
+              key={loc.key}
+              type="button"
+              onClick={() => handleLocaleChange(loc.key)}
+              className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+                localeKey === loc.key
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {loc.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
       {activeCar && (
         <section>
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-            Data
+            {t('settings.data')}
           </h3>
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm divide-y divide-gray-100">
             <button
               onClick={async () => {
-                if (confirm(`Delete all ${records.length} fuel records? This cannot be undone.`)) {
+                if (
+                  confirm(
+                    t('settings.clearFuelConfirm', {
+                      count: String(records.length),
+                    }),
+                  )
+                ) {
                   await deleteAllRecords();
                 }
               }}
@@ -204,8 +248,10 @@ export default function SettingsPage() {
             >
               <Trash2 size={16} className="text-red-500" />
               <div>
-                <p className="text-sm font-medium text-red-600">Clear all fuel records</p>
-                <p className="text-xs text-gray-400">{records.length} records will be deleted</p>
+                <p className="text-sm font-medium text-red-600">{t('settings.clearFuelTitle')}</p>
+                <p className="text-xs text-gray-400">
+                  {t('settings.clearFuelSubtitle', { count: String(records.length) })}
+                </p>
               </div>
             </button>
 
@@ -216,23 +262,25 @@ export default function SettingsPage() {
             >
               <Download size={16} className="text-indigo-600" />
               <div>
-                <p className="text-sm font-medium text-gray-900">Export fuel log</p>
-                <p className="text-xs text-gray-400">{records.length} records as CSV</p>
+                <p className="text-sm font-medium text-gray-900">{t('settings.exportTitle')}</p>
+                <p className="text-xs text-gray-400">
+                  {t('settings.exportSubtitle', { count: String(records.length) })}
+                </p>
               </div>
             </button>
 
             <div className="p-4 space-y-3">
               <div className="flex items-center gap-2 mb-1">
                 <Upload size={16} className="text-indigo-600" />
-                <p className="text-sm font-medium text-gray-900">Import from CSV</p>
+                <p className="text-sm font-medium text-gray-900">{t('settings.importTitle')}</p>
               </div>
-              <p className="text-xs text-gray-400">
-                CSV columns: odometer, liters, price_lpg, price_petrol, notes (optional)
-              </p>
+              <p className="text-xs text-gray-400">{t('settings.importHint')}</p>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Date for all records</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    {t('settings.importDateLabel')}
+                  </label>
                   <input
                     type="date"
                     value={importDate}
@@ -241,29 +289,33 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Fuel type</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    {t('settings.importFuelTypeLabel')}
+                  </label>
                   <div className="flex rounded-lg border border-gray-200 overflow-hidden">
-                    {(['lpg', 'petrol'] as const).map((t) => (
+                    {(['lpg', 'petrol'] as const).map((ft) => (
                       <button
-                        key={t}
+                        key={ft}
                         type="button"
-                        onClick={() => setImportFuelType(t)}
+                        onClick={() => setImportFuelType(ft)}
                         className={`flex-1 py-2 text-xs font-medium transition-colors ${
-                          importFuelType === t
-                            ? t === 'lpg' ? 'bg-indigo-600 text-white' : 'bg-amber-500 text-white'
+                          importFuelType === ft
+                            ? ft === 'lpg' ? 'bg-indigo-600 text-white' : 'bg-amber-500 text-white'
                             : 'bg-white text-gray-600 hover:bg-gray-50'
                         }`}
                       >
-                        {t === 'lpg' ? 'LPG' : 'Petrol'}
+                        {ft === 'lpg' ? t('settings.importFuelLpg') : t('settings.importFuelPetrol')}
                       </button>
                     ))}
                   </div>
                 </div>
               </div>
 
-              <label className={`w-full flex items-center justify-center gap-2 border border-dashed rounded-lg py-2.5 text-sm font-medium transition-colors cursor-pointer ${importing ? 'opacity-50 cursor-not-allowed border-gray-200 text-gray-400' : 'border-indigo-300 text-indigo-600 hover:bg-indigo-50'}`}>
+              <label
+                className={`w-full flex items-center justify-center gap-2 border border-dashed rounded-lg py-2.5 text-sm font-medium transition-colors cursor-pointer ${importing ? 'opacity-50 cursor-not-allowed border-gray-200 text-gray-400' : 'border-indigo-300 text-indigo-600 hover:bg-indigo-50'}`}
+              >
                 <Upload size={15} />
-                {importing ? 'Importing…' : 'Choose CSV file'}
+                {importing ? t('settings.importing') : t('settings.chooseCsv')}
                 <input
                   ref={fileRef}
                   type="file"
@@ -274,18 +326,17 @@ export default function SettingsPage() {
                 />
               </label>
 
-              {importResult && (
-                <p className="text-xs text-gray-600">{importResult}</p>
+              {importResultText && (
+                <p className="text-xs text-gray-600">{importResultText}</p>
               )}
             </div>
           </div>
         </section>
       )}
 
-      {/* Account */}
       <section>
         <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-          Account
+          {t('settings.account')}
         </h3>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <p className="text-sm text-gray-600 mb-3">{user?.email}</p>
@@ -294,7 +345,7 @@ export default function SettingsPage() {
             className="flex items-center gap-2 text-sm text-red-600 hover:text-red-700 font-medium"
           >
             <LogOut size={15} />
-            Sign out
+            {t('common.signOut')}
           </button>
         </div>
       </section>

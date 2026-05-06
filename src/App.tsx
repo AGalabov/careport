@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CarProvider } from './contexts/CarContext';
+import { I18nProvider } from './contexts/I18nContext';
 import Layout from './components/layout/Layout';
 import AuthPage from './pages/AuthPage';
 import DashboardPage from './pages/DashboardPage';
@@ -23,22 +24,24 @@ function RequireAuth() {
 export default function App() {
   return (
     <Router>
-      <AuthProvider>
-        <CarProvider>
-          <Routes>
-            <Route path="/auth" element={<AuthPage />} />
-            <Route element={<RequireAuth />}>
-              <Route element={<Layout />}>
-                <Route path="/" element={<DashboardPage />} />
-                <Route path="/fuel" element={<FuelLogPage />} />
-                <Route path="/reminders" element={<RemindersPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
+      <I18nProvider>
+        <AuthProvider>
+          <CarProvider>
+            <Routes>
+              <Route path="/auth" element={<AuthPage />} />
+              <Route element={<RequireAuth />}>
+                <Route element={<Layout />}>
+                  <Route path="/" element={<DashboardPage />} />
+                  <Route path="/fuel" element={<FuelLogPage />} />
+                  <Route path="/reminders" element={<RemindersPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                </Route>
               </Route>
-            </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </CarProvider>
-      </AuthProvider>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </CarProvider>
+        </AuthProvider>
+      </I18nProvider>
     </Router>
   );
 }

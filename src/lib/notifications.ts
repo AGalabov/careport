@@ -1,5 +1,13 @@
 import type { Reminder } from '../types';
 
+export type ReminderNotificationCopy = {
+  kmOverdueBody: string;
+  kmRemainingBody: (km: number) => string;
+  dateDueTodayBody: string;
+  dateDueInOneDayBody: string;
+  dateDueInDaysBody: (days: number) => string;
+};
+
 export async function requestNotificationPermission(): Promise<boolean> {
   if (!('Notification' in window)) return false;
   if (Notification.permission === 'granted') return true;
@@ -25,6 +33,7 @@ export async function checkKmReminders(
   carId: string,
   reminders: Reminder[],
   updateReminder: (id: string, data: Partial<Omit<Reminder, 'id'>>) => Promise<void>,
+  copy: ReminderNotificationCopy,
 ): Promise<void> {
   const kmReminders = reminders.filter(
     (r) => r.isActive && r.type === 'km' && r.carId === carId,
@@ -47,8 +56,8 @@ export async function checkKmReminders(
       if (!notifiedKmThresholds.includes(threshold) && kmRemaining <= threshold) {
         const body =
           kmRemaining <= 0
-            ? 'Overdue — service now!'
-            : `~${Math.round(kmRemaining).toLocaleString()} km remaining`;
+            ? copy.kmOverdueBody
+            : copy.kmRemainingBody(Math.round(kmRemaining));
         await showNotification(reminder.name, body);
         newlyNotified.push(threshold);
       }
@@ -65,6 +74,7 @@ export async function checkKmReminders(
 export async function checkDateReminders(
   reminders: Reminder[],
   updateReminder: (id: string, data: Partial<Omit<Reminder, 'id'>>) => Promise<void>,
+  copy: ReminderNotificationCopy,
 ): Promise<void> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -88,8 +98,10 @@ export async function checkDateReminders(
       if (!notified.includes(threshold) && daysRemaining <= threshold) {
         const body =
           daysRemaining === 0
-            ? 'Due today!'
-            : `Due in ${daysRemaining} day${daysRemaining === 1 ? '' : 's'}`;
+            ? copy.dateDueTodayBody
+            : daysRemaining === 1
+              ? copy.dateDueInOneDayBody
+              : copy.dateDueInDaysBody(daysRemaining);
         await showNotification(reminder.name, body);
         newlyNotified.push(threshold);
       }

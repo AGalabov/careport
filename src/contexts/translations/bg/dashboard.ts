@@ -1,0 +1,16 @@
+export const dashboard = {
+  addCarPrompt: 'Добавете автомобил, за да започнете',
+  goToSettings: 'Към настройките',
+  noLpgYet: 'Няма зареждания с LPG — добавете първото по-долу',
+  lastFillUp: 'Последно зареждане %{type}',
+  reminders: 'Напомняния',
+  viewAll: 'Всички',
+  logFillUp: 'Запиши зареждане',
+  filled: 'Заредено ',
+  cost: 'Разход ',
+  consumption: 'Разход ',
+  petrolEquiv: 'Екв. бензин',
+  lpgEquiv: 'Екв. LPG',
+  km: ' км',
+  consumptionUnit: ' л/100км',
+} as const;
