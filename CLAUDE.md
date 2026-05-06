@@ -7,7 +7,7 @@ Personal car care app — fuel tracking, km-based and date-based maintenance rem
 - **Frontend**: React 19 + TypeScript + Vite 8
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite` plugin — no config file needed)
 - **Database**: Firebase Firestore (offline-capable via `persistentLocalCache`)
-- **Auth**: Firebase Auth (Google Sign-In only)
+- **Auth**: Firebase Auth (Google Sign-In + Email/Password)
 - **Hosting**: Firebase Hosting
 - **PWA**: `vite-plugin-pwa` + Workbox
 
@@ -15,7 +15,7 @@ Personal car care app — fuel tracking, km-based and date-based maintenance rem
 
 1. Copy `.env.example` to `.env` and fill in Firebase credentials
 2. Create a Firebase project at console.firebase.google.com
-3. Enable Firestore and Google Authentication
+3. Enable Firestore, Google Authentication, and Email/Password Authentication
 4. Deploy Firestore rules: `firebase deploy --only firestore:rules`
 5. `npm run dev`
 
@@ -35,7 +35,7 @@ src/
 │       ├── ReminderForm.tsx       — add/edit reminder modal (km or date)
 │       └── ReminderItem.tsx       — single reminder card with status dot
 ├── contexts/
-│   ├── AuthContext.tsx            — Firebase auth state + signIn/signOut
+│   ├── AuthContext.tsx            — Firebase auth state + signIn/signInWithEmail/signOut + allowlist
 │   └── CarContext.tsx             — cars list, active car, CRUD; auto-selects if 1 car
 ├── hooks/
 │   ├── useFuelRecords.ts          — Firestore CRUD for fuel records
@@ -44,7 +44,7 @@ src/
 │   ├── firebase.ts                — Firebase app, auth, and db exports
 │   └── notifications.ts           — requestPermission, checkKmReminders, checkDateReminders
 ├── pages/
-│   ├── AuthPage.tsx               — Google sign-in
+│   ├── AuthPage.tsx               — Google + email/password sign-in
 │   ├── DashboardPage.tsx          — last fill-up stats + reminder summary + add button
 │   ├── FuelLogPage.tsx            — full fuel history list
 │   ├── RemindersPage.tsx          — reminders management
@@ -68,6 +68,14 @@ All data lives under `users/{userId}/`:
 **Date-based** (triggered on app open / DashboardPage mount):
 - `notifications.ts:checkDateReminders` — for each active date reminder, if `daysRemaining <= threshold` and threshold not yet notified → show notification + record in `notifiedDayThresholds`
 - Reset `notifiedDayThresholds` → update the reminder with a new `dueDate`
+
+## Auth & Allowlist
+
+Two sign-in methods: **Google** and **Email/Password**.
+
+Email/password accounts must be created manually in Firebase Console (Authentication → Add user). There is no sign-up form.
+
+An optional `VITE_ALLOWED_EMAILS` env var (comma-separated) restricts both sign-in methods to the listed emails. If empty or unset, all authenticated users are allowed.
 
 ## CSV Import Format
 

@@ -1,14 +1,49 @@
-import { useEffect } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function AuthPage() {
-  const { user, signIn } = useAuth();
+  const { user, signIn, signInWithEmail } = useAuth();
   const navigate = useNavigate();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (user) navigate('/', { replace: true });
   }, [user, navigate]);
+
+  async function handleGoogleSignIn() {
+    setError('');
+    try {
+      await signIn();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Google sign-in failed.');
+    }
+  }
+
+  async function handleEmailSignIn(e: FormEvent) {
+    e.preventDefault();
+    setError('');
+    setSubmitting(true);
+    try {
+      await signInWithEmail(email, password);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        if (err.message.includes('not authorized')) {
+          setError(err.message);
+        } else if (err.message.includes('invalid-credential') || err.message.includes('wrong-password') || err.message.includes('user-not-found')) {
+          setError('Invalid email or password.');
+        } else {
+          setError('Sign-in failed. Please try again.');
+        }
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <div className="min-h-svh flex flex-col items-center justify-center bg-gray-50 px-4">
@@ -21,8 +56,14 @@ export default function AuthPage() {
           </p>
         </div>
 
+        {error && (
+          <div className="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
         <button
-          onClick={signIn}
+          onClick={handleGoogleSignIn}
           className="w-full flex items-center justify-center gap-3 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl px-4 py-3 shadow-sm transition-colors"
         >
           <svg viewBox="0 0 24 24" width="20" height="20">
@@ -45,6 +86,41 @@ export default function AuthPage() {
           </svg>
           Continue with Google
         </button>
+
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-200" />
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="bg-gray-50 px-3 text-gray-400">or</span>
+          </div>
+        </div>
+
+        <form onSubmit={handleEmailSignIn} className="space-y-3">
+          <input
+            type="email"
+            placeholder="Email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+          />
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50"
+          >
+            {submitting ? 'Signing in…' : 'Sign in with Email'}
+          </button>
+        </form>
       </div>
     </div>
   );
