@@ -4,20 +4,20 @@ import type { Reminder } from '../../types';
 
 interface Props {
   reminder: Reminder;
-  currentOdometer?: number;
+  currentKilometersPassed?: number;
   onEdit: () => void;
   onDelete: () => void;
   onMarkServiced?: () => void;
 }
 
-function getReminderStatus(reminder: Reminder, currentOdometer?: number) {
+function getReminderStatus(reminder: Reminder, currentKilometersPassed?: number) {
   if (!reminder.isActive) return { label: 'Inactive', color: 'gray' };
 
-  if (reminder.type === 'km' && currentOdometer !== undefined) {
+  if (reminder.type === 'km' && currentKilometersPassed !== undefined) {
     const { intervalKm = 0, lastServiceKm = 0, alertBeforeKm = [] } = reminder;
     if (!intervalKm) return { label: 'Configured', color: 'gray' };
     const nextDueKm = lastServiceKm + intervalKm;
-    const kmRemaining = nextDueKm - currentOdometer;
+    const kmRemaining = nextDueKm - currentKilometersPassed;
     const minThreshold = Math.max(...alertBeforeKm);
     if (kmRemaining <= 0) return { label: 'Overdue', color: 'red' };
     if (kmRemaining <= minThreshold) return { label: `~${Math.round(kmRemaining).toLocaleString()} km`, color: 'amber' };
@@ -47,8 +47,14 @@ const colorMap = {
   gray: 'bg-gray-50 text-gray-500 border-gray-200',
 };
 
-export default function ReminderItem({ reminder, currentOdometer, onEdit, onDelete, onMarkServiced }: Props) {
-  const status = getReminderStatus(reminder, currentOdometer);
+export default function ReminderItem({
+  reminder,
+  currentKilometersPassed,
+  onEdit,
+  onDelete,
+  onMarkServiced,
+}: Props) {
+  const status = getReminderStatus(reminder, currentKilometersPassed);
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
@@ -67,7 +73,8 @@ export default function ReminderItem({ reminder, currentOdometer, onEdit, onDele
             {reminder.type === 'km' ? (
               <>
                 Every {(reminder.intervalKm ?? 0).toLocaleString()} km
-                {reminder.lastServiceKm !== undefined && ` · Last at ${reminder.lastServiceKm.toLocaleString()} km`}
+                {reminder.lastServiceKm !== undefined &&
+                  ` · Last at ${reminder.lastServiceKm.toLocaleString()} km`}
               </>
             ) : (
               reminder.dueDate && `Due ${format(reminder.dueDate.toDate(), 'dd MMM yyyy')}`

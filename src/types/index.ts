@@ -6,7 +6,7 @@ export interface Car {
   make?: string;
   model?: string;
   year?: number;
-  initialOdometer: number;
+  initialKilometersPassed: number;
   userId: string;
   createdAt: Timestamp;
 }
@@ -18,7 +18,7 @@ export interface FuelRecord {
   carId: string;
   userId: string;
   date: Timestamp;
-  odometer: number;
+  kilometersPassed: number;
   fuelType: FuelType;
   liters: number;
   priceLpg: number;

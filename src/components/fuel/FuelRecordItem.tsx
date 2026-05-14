@@ -4,14 +4,21 @@ import type { FuelRecord } from '../../types';
 
 interface Props {
   record: FuelRecord;
-  previousSameTypeOdometer?: number;
+  previousSameTypeKilometersPassed?: number;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-export default function FuelRecordItem({ record, previousSameTypeOdometer, onEdit, onDelete }: Props) {
+export default function FuelRecordItem({
+  record,
+  previousSameTypeKilometersPassed,
+  onEdit,
+  onDelete,
+}: Props) {
   const kmDriven =
-    previousSameTypeOdometer !== undefined ? record.odometer - previousSameTypeOdometer : null;
+    previousSameTypeKilometersPassed !== undefined
+      ? record.kilometersPassed - previousSameTypeKilometersPassed
+      : null;
   const consumption =
     kmDriven !== null && kmDriven > 0 ? (record.liters / kmDriven) * 100 : null;
   const equivalent =
@@ -39,7 +46,7 @@ export default function FuelRecordItem({ record, previousSameTypeOdometer, onEdi
             <p className="text-xs text-gray-400">{format(record.date.toDate(), 'dd MMM yyyy')}</p>
           </div>
           <p className="text-base font-semibold text-gray-900">
-            {record.odometer.toLocaleString()} km
+            {record.kilometersPassed.toLocaleString()} km
           </p>
         </div>
         <div className="flex gap-1">

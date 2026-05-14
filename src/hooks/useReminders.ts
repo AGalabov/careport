@@ -69,10 +69,10 @@ export function useReminders(carId: string | null) {
   );
 
   const markServiced = useCallback(
-    async (id: string, currentOdometer: number) => {
+    async (id: string, currentKilometersPassed: number) => {
       if (!user) return;
       await updateDoc(doc(db, 'users', user.uid, 'reminders', id), {
-        lastServiceKm: currentOdometer,
+        lastServiceKm: currentKilometersPassed,
         notifiedKmThresholds: [],
       });
     },

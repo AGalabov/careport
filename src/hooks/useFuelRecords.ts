@@ -14,12 +14,13 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { fuelRecordFromFirestore } from '../lib/firestoreMappers';
 import { useAuth } from '../contexts/AuthContext';
 import type { FuelRecord, FuelType } from '../types';
 
 export interface AddRecordInput {
   date: Date;
-  odometer: number;
+  kilometersPassed: number;
   fuelType: FuelType;
   liters: number;
   priceLpg: number;
@@ -44,7 +45,7 @@ export function useFuelRecords(carId: string | null) {
       orderBy('date', 'desc'),
     );
     return onSnapshot(q, (snap) => {
-      setRecords(snap.docs.map((d) => ({ id: d.id, ...d.data() } as FuelRecord)));
+      setRecords(snap.docs.map((d) => fuelRecordFromFirestore(d.id, d.data() as Record<string, unknown>)));
       setLoading(false);
     });
   }, [user, carId]);
@@ -57,7 +58,7 @@ export function useFuelRecords(carId: string | null) {
         carId,
         userId: user.uid,
         date: Timestamp.fromDate(data.date),
-        odometer: data.odometer,
+        odometer: data.kilometersPassed,
         fuelType: data.fuelType,
         liters: data.liters,
         priceLpg: data.priceLpg,
@@ -74,6 +75,10 @@ export function useFuelRecords(carId: string | null) {
     async (id: string, data: Partial<AddRecordInput>) => {
       if (!user) return;
       const payload: Record<string, unknown> = { ...data };
+      if (data.kilometersPassed !== undefined) {
+        payload.odometer = data.kilometersPassed;
+        delete payload.kilometersPassed;
+      }
       if (data.date) payload.date = Timestamp.fromDate(data.date);
       if (data.liters !== undefined || data.priceLpg !== undefined || data.pricePetrol !== undefined || data.fuelType !== undefined) {
         const existing = records.find((r) => r.id === id);

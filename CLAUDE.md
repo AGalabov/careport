@@ -42,6 +42,7 @@ src/
 │   └── useReminders.ts            — Firestore CRUD for reminders + markServiced
 ├── lib/
 │   ├── firebase.ts                — Firebase app, auth, and db exports
+│   ├── firestoreMappers.ts        — map Firestore `odometer` / `initialOdometer` to app types
 │   └── notifications.ts           — requestPermission, checkKmReminders, checkDateReminders
 ├── pages/
 │   ├── AuthPage.tsx               — Google + email/password sign-in
@@ -55,15 +56,15 @@ src/
 ## Firestore Schema
 
 All data lives under `users/{userId}/`:
-- `cars/{carId}` — Car documents
-- `fuelRecords/{recordId}` — FuelRecord documents (indexed by carId + date desc)
+- `cars/{carId}` — Car documents (`initialOdometer` in Firestore = kilometers passed when the car was added)
+- `fuelRecords/{recordId}` — FuelRecord documents (indexed by carId + date desc; `odometer` in Firestore = kilometers passed at that fill-up)
 - `reminders/{reminderId}` — Reminder documents
 
 ## Notification Logic
 
 **Km-based** (triggered when a fuel record is saved):
-- `notifications.ts:checkKmReminders` — for each active km reminder, if `currentOdometer >= lastServiceKm + intervalKm - threshold` and threshold not yet notified → show notification + record in `notifiedKmThresholds`
-- Reset `notifiedKmThresholds` → call `markServiced(reminderId, currentOdometer)` from the ✓ button on ReminderItem
+- `notifications.ts:checkKmReminders` — for each active km reminder, if `currentKilometersPassed >= lastServiceKm + intervalKm - threshold` and threshold not yet notified → show notification + record in `notifiedKmThresholds`
+- Reset `notifiedKmThresholds` → call `markServiced(reminderId, currentKilometersPassed)` from the ✓ button on ReminderItem
 
 **Date-based** (triggered on app open / DashboardPage mount):
 - `notifications.ts:checkDateReminders` — for each active date reminder, if `daysRemaining <= threshold` and threshold not yet notified → show notification + record in `notifiedDayThresholds`
@@ -78,11 +79,11 @@ Email/password accounts must be created manually in Firebase Console (Authentica
 ## CSV Import Format
 
 ```
-date,odometer,liters,price_per_liter,total_cost,notes
-2024-01-15,45230,32.5,1.85,60.13,
+date,kilometers_passed,fuel_type,liters,price_lpg,price_petrol,total_cost,notes
+2024-01-15,45230,lpg,32.5,0.80,1.85,26.00,
 ```
 
-Header row is optional (detected by checking if first cell contains "date").
+Header row is optional (detected by checking if the first cell is not a number). Settings import expects columns in order: kilometers passed, liters, price_lpg, price_petrol, optional notes (dates are assigned from the date picker).
 
 ## Deploy
 

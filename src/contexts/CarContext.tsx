@@ -15,6 +15,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { carFromFirestore } from '../lib/firestoreMappers';
 import { useAuth } from './AuthContext';
 import type { Car } from '../types';
 
@@ -46,7 +47,9 @@ export function CarProvider({ children }: { children: ReactNode }) {
     }
     setLoading(true);
     return onSnapshot(collection(db, 'users', user.uid, 'cars'), (snap) => {
-      const loaded = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Car));
+      const loaded = snap.docs.map((d) =>
+        carFromFirestore(d.id, d.data() as Record<string, unknown>),
+      );
       setCars(loaded);
       setLoading(false);
       if (loaded.length === 1 && !activeCarId) {
@@ -65,8 +68,10 @@ export function CarProvider({ children }: { children: ReactNode }) {
 
   async function addCar(data: Omit<Car, 'id' | 'userId' | 'createdAt'>) {
     if (!user) return;
+    const { initialKilometersPassed, ...rest } = data;
     const ref = await addDoc(collection(db, 'users', user.uid, 'cars'), {
-      ...data,
+      ...rest,
+      initialOdometer: initialKilometersPassed,
       userId: user.uid,
       createdAt: serverTimestamp(),
     });
@@ -79,7 +84,12 @@ export function CarProvider({ children }: { children: ReactNode }) {
     data: Partial<Omit<Car, 'id' | 'userId' | 'createdAt'>>,
   ) {
     if (!user) return;
-    await updateDoc(doc(db, 'users', user.uid, 'cars', id), data);
+    const payload: Record<string, unknown> = { ...data };
+    if (data.initialKilometersPassed !== undefined) {
+      payload.initialOdometer = data.initialKilometersPassed;
+      delete payload.initialKilometersPassed;
+    }
+    await updateDoc(doc(db, 'users', user.uid, 'cars', id), payload);
   }
 
   async function deleteCar(id: string) {
