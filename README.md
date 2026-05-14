@@ -75,6 +75,6 @@ Email/password accounts must be created manually in the Firebase Console (Authen
 Fuel records can be imported from CSV. The header row is optional:
 
 ```
-date,odometer,liters,price_per_liter,total_cost,notes
+date,kilometers_passed,liters,price_per_liter,total_cost,notes
 2024-01-15,45230,32.5,1.85,60.13,
 ```

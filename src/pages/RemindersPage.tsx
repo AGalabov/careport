@@ -15,7 +15,7 @@ export default function RemindersPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<Reminder | null>(null);
 
-  const latestOdometer = records[0]?.odometer;
+  const latestKilometersPassed = records[0]?.kilometersPassed;
 
   async function handleDelete(id: string) {
     if (confirm('Delete this reminder?')) {
@@ -41,12 +41,12 @@ export default function RemindersPage() {
             <ReminderItem
               key={reminder.id}
               reminder={reminder}
-              currentOdometer={latestOdometer}
+              currentKilometersPassed={latestKilometersPassed}
               onEdit={() => setEditing(reminder)}
               onDelete={() => handleDelete(reminder.id)}
               onMarkServiced={
-                reminder.type === 'km' && latestOdometer !== undefined
-                  ? () => markServiced(reminder.id, latestOdometer)
+                reminder.type === 'km' && latestKilometersPassed !== undefined
+                  ? () => markServiced(reminder.id, latestKilometersPassed)
                   : undefined
               }
             />
@@ -67,7 +67,7 @@ export default function RemindersPage() {
         <ReminderForm
           onClose={() => setShowAdd(false)}
           onSubmit={addReminder}
-          currentOdometer={latestOdometer}
+          currentKilometersPassed={latestKilometersPassed}
         />
       )}
 
@@ -76,7 +76,7 @@ export default function RemindersPage() {
           initial={editing}
           onClose={() => setEditing(null)}
           onSubmit={(data) => updateReminder(editing.id, data).then(() => setEditing(null))}
-          currentOdometer={latestOdometer}
+          currentKilometersPassed={latestKilometersPassed}
         />
       )}
     </div>

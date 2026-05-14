@@ -43,27 +43,30 @@ export default function FuelLogPage() {
     });
   }
 
-  function prevSameTypeOdometer(record: FuelRecord, yearRecords: FuelRecord[]): number | undefined {
+  function prevSameTypeKilometersPassed(
+    record: FuelRecord,
+    yearRecords: FuelRecord[],
+  ): number | undefined {
     const sameType = yearRecords.filter((r) => r.fuelType === record.fuelType);
     const idx = sameType.findIndex((r) => r.id === record.id);
-    return sameType[idx + 1]?.odometer;
+    return sameType[idx + 1]?.kilometersPassed;
   }
 
-  function latestOdometerFor(ft: FuelType): number | undefined {
+  function latestKilometersPassedFor(ft: FuelType): number | undefined {
     for (const year of availableYears) {
       if (!isYearLoaded(year)) continue;
       const recs = getYear(year).filter((r) => r.fuelType === ft);
-      if (recs.length > 0) return recs[0].odometer;
+      if (recs.length > 0) return recs[0].kilometersPassed;
     }
     return undefined;
   }
 
-  function prevOdometerForEdit(record: FuelRecord, ft: FuelType): number | undefined {
+  function prevKilometersPassedForEdit(record: FuelRecord, ft: FuelType): number | undefined {
     for (const year of availableYears) {
       if (!isYearLoaded(year)) continue;
       const sameType = getYear(year).filter((r) => r.fuelType === ft);
       const idx = sameType.findIndex((r) => r.id === record.id);
-      if (idx >= 0) return sameType[idx + 1]?.odometer;
+      if (idx >= 0) return sameType[idx + 1]?.kilometersPassed;
     }
     return undefined;
   }
@@ -71,7 +74,7 @@ export default function FuelLogPage() {
   async function handleAdd(data: AddRecordInput) {
     await addRecord(data);
     if (activeCar) {
-      await checkKmReminders(data.odometer, activeCar.id, reminders, updateReminder);
+      await checkKmReminders(data.kilometersPassed, activeCar.id, reminders, updateReminder);
     }
     setShowAdd(false);
   }
@@ -156,7 +159,10 @@ export default function FuelLogPage() {
                         <FuelRecordItem
                           key={record.id}
                           record={record}
-                          previousSameTypeOdometer={prevSameTypeOdometer(record, getYear(year))}
+                          previousSameTypeKilometersPassed={prevSameTypeKilometersPassed(
+                            record,
+                            getYear(year),
+                          )}
                           onEdit={() => setEditing(record)}
                           onDelete={() => handleDelete(record.id)}
                         />
@@ -182,8 +188,8 @@ export default function FuelLogPage() {
         <FuelRecordForm
           onClose={() => setShowAdd(false)}
           onSubmit={handleAdd}
-          previousLpgOdometer={latestOdometerFor('lpg')}
-          previousPetrolOdometer={latestOdometerFor('petrol')}
+          previousLpgKilometersPassed={latestKilometersPassedFor('lpg')}
+          previousPetrolKilometersPassed={latestKilometersPassedFor('petrol')}
         />
       )}
 
@@ -192,8 +198,8 @@ export default function FuelLogPage() {
           initial={editing}
           onClose={() => setEditing(null)}
           onSubmit={(data) => handleEdit(editing.id, data)}
-          previousLpgOdometer={prevOdometerForEdit(editing, 'lpg')}
-          previousPetrolOdometer={prevOdometerForEdit(editing, 'petrol')}
+          previousLpgKilometersPassed={prevKilometersPassedForEdit(editing, 'lpg')}
+          previousPetrolKilometersPassed={prevKilometersPassedForEdit(editing, 'petrol')}
         />
       )}
     </div>

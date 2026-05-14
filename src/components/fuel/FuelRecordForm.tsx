@@ -8,16 +8,16 @@ import type { AddRecordInput } from '../../hooks/useFuelRecords';
 interface Props {
   onClose: () => void;
   onSubmit: (data: AddRecordInput) => Promise<void>;
-  previousLpgOdometer?: number;
-  previousPetrolOdometer?: number;
+  previousLpgKilometersPassed?: number;
+  previousPetrolKilometersPassed?: number;
   initial?: FuelRecord;
 }
 
 export default function FuelRecordForm({
   onClose,
   onSubmit,
-  previousLpgOdometer,
-  previousPetrolOdometer,
+  previousLpgKilometersPassed,
+  previousPetrolKilometersPassed,
   initial,
 }: Props) {
   const [date, setDate] = useState(
@@ -28,7 +28,9 @@ export default function FuelRecordForm({
   const [fuelType, setFuelType] = useState<FuelType>(
     initial?.fuelType ?? 'lpg',
   );
-  const [odometer, setOdometer] = useState(initial?.odometer?.toString() ?? '');
+  const [kilometersPassed, setKilometersPassed] = useState(
+    initial?.kilometersPassed?.toString() ?? '',
+  );
   const [liters, setLiters] = useState(initial?.liters?.toString() ?? '');
   const [priceLpg, setPriceLpg] = useState(initial?.priceLpg?.toString() ?? '');
   const [pricePetrol, setPricePetrol] = useState(
@@ -37,10 +39,12 @@ export default function FuelRecordForm({
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const dateInputRef = useRef<HTMLInputElement>(null);
 
-  const prevOdometer =
-    fuelType === 'lpg' ? previousLpgOdometer : previousPetrolOdometer;
+  const prevKilometersPassed =
+    fuelType === 'lpg' ? previousLpgKilometersPassed : previousPetrolKilometersPassed;
   const kmDriven =
-    prevOdometer && odometer ? Number(odometer) - prevOdometer : null;
+    prevKilometersPassed && kilometersPassed
+      ? Number(kilometersPassed) - prevKilometersPassed
+      : null;
   const lpg = parseFloat(priceLpg) || 0;
   const petrol = parseFloat(pricePetrol) || 0;
   const litersNum = parseFloat(liters) || 0;
@@ -58,13 +62,15 @@ export default function FuelRecordForm({
 
   const { loading: saving, error, trigger } = useAsyncAction(async () => {
     if (!date) throw new Error('Date is required');
-    if (!odometer || isNaN(Number(odometer))) throw new Error('Valid odometer reading is required');
+    if (!kilometersPassed || isNaN(Number(kilometersPassed))) {
+      throw new Error('Valid kilometers passed is required');
+    }
     if (!liters || isNaN(Number(liters)) || Number(liters) <= 0) throw new Error('Valid fill amount is required');
     if (!priceLpg || isNaN(Number(priceLpg)) || Number(priceLpg) <= 0) throw new Error('LPG price is required');
     if (!pricePetrol || isNaN(Number(pricePetrol)) || Number(pricePetrol) <= 0) throw new Error('Petrol price is required');
     await onSubmit({
       date: new Date(date),
-      odometer: Number(odometer),
+      kilometersPassed: Number(kilometersPassed),
       fuelType,
       liters: Number(liters),
       priceLpg: Number(priceLpg),
@@ -153,18 +159,18 @@ export default function FuelRecordForm({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Current odometer (km)
+              Kilometers passed (km)
             </label>
-            {prevOdometer && (
+            {prevKilometersPassed !== undefined && (
               <p className="text-xs text-gray-400 mb-1">
                 Previous {fuelType.toUpperCase()} fill:{' '}
-                {prevOdometer.toLocaleString()} km
+                {prevKilometersPassed.toLocaleString()} km
               </p>
             )}
             <input
               type="number"
-              value={odometer}
-              onChange={(e) => setOdometer(e.target.value)}
+              value={kilometersPassed}
+              onChange={(e) => setKilometersPassed(e.target.value)}
               placeholder="e.g. 45230"
               min="0"
               className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"

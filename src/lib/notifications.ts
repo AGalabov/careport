@@ -21,7 +21,7 @@ async function showNotification(title: string, body: string): Promise<void> {
 }
 
 export async function checkKmReminders(
-  currentOdometer: number,
+  currentKilometersPassed: number,
   carId: string,
   reminders: Reminder[],
   updateReminder: (id: string, data: Partial<Omit<Reminder, 'id'>>) => Promise<void>,
@@ -40,7 +40,7 @@ export async function checkKmReminders(
     if (!intervalKm) continue;
 
     const nextDueKm = lastServiceKm + intervalKm;
-    const kmRemaining = nextDueKm - currentOdometer;
+    const kmRemaining = nextDueKm - currentKilometersPassed;
     const newlyNotified: number[] = [];
 
     for (const threshold of alertBeforeKm) {

@@ -8,7 +8,7 @@ interface Props {
   onClose: () => void;
   onSubmit: (data: Omit<Reminder, 'id' | 'userId' | 'carId' | 'createdAt'>) => Promise<void>;
   initial?: Reminder;
-  currentOdometer?: number;
+  currentKilometersPassed?: number;
 }
 
 const KM_PRESETS = [2000, 1000, 500, 100];
@@ -50,12 +50,12 @@ function ThresholdSelector({
   );
 }
 
-export default function ReminderForm({ onClose, onSubmit, initial, currentOdometer }: Props) {
+export default function ReminderForm({ onClose, onSubmit, initial, currentKilometersPassed }: Props) {
   const [name, setName] = useState(initial?.name ?? '');
   const [type, setType] = useState<'km' | 'date'>(initial?.type ?? 'km');
   const [intervalKm, setIntervalKm] = useState(initial?.intervalKm?.toString() ?? '10000');
   const [lastServiceKm, setLastServiceKm] = useState(
-    initial?.lastServiceKm?.toString() ?? currentOdometer?.toString() ?? '',
+    initial?.lastServiceKm?.toString() ?? currentKilometersPassed?.toString() ?? '',
   );
   const [alertBeforeKm, setAlertBeforeKm] = useState<number[]>(
     initial?.alertBeforeKm ?? [1000, 500, 100],
@@ -167,13 +167,13 @@ export default function ReminderForm({ onClose, onSubmit, initial, currentOdomet
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Last service (km)
+                    Last service (kilometers passed)
                   </label>
                   <input
                     type="number"
                     value={lastServiceKm}
                     onChange={(e) => setLastServiceKm(e.target.value)}
-                    placeholder={currentOdometer?.toString() ?? '0'}
+                    placeholder={currentKilometersPassed?.toString() ?? '0'}
                     min="0"
                     className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />

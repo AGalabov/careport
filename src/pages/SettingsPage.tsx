@@ -50,18 +50,32 @@ export default function SettingsPage() {
     let skipped = 0;
     for (const row of dataRows) {
       const [odoStr, litersStr, priceLpgStr, pricePetrolStr, notes] = row;
-      const odometer = parseNum(odoStr);
+      const kilometersPassed = parseNum(odoStr);
       const liters = parseNum(litersStr);
       const priceLpg = parseNum(priceLpgStr);
       const pricePetrol = parseNum(pricePetrolStr);
 
-      if (isNaN(odometer) || isNaN(liters) || liters <= 0 || isNaN(priceLpg) || isNaN(pricePetrol)) {
+      if (
+        isNaN(kilometersPassed) ||
+        isNaN(liters) ||
+        liters <= 0 ||
+        isNaN(priceLpg) ||
+        isNaN(pricePetrol)
+      ) {
         skipped++;
         continue;
       }
       const date = new Date(baseDate);
       date.setDate(date.getDate() + imported);
-      await addRecord({ date, odometer, fuelType: importFuelType, liters, priceLpg, pricePetrol, notes: notes?.trim() });
+      await addRecord({
+        date,
+        kilometersPassed,
+        fuelType: importFuelType,
+        liters,
+        priceLpg,
+        pricePetrol,
+        notes: notes?.trim(),
+      });
       imported++;
     }
     return `Imported ${imported} records${skipped > 0 ? `, skipped ${skipped} invalid rows` : ''}.`;
@@ -75,11 +89,21 @@ export default function SettingsPage() {
   }
 
   function exportCSV() {
-    const header = 'date,odometer,fuel_type,liters,price_lpg,price_petrol,total_cost,notes';
+    const header =
+      'date,kilometers_passed,fuel_type,liters,price_lpg,price_petrol,total_cost,notes';
     const rows = records.map((r) => {
       const d = r.date.toDate();
       const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      return [dateStr, r.odometer, r.fuelType, r.liters, r.priceLpg, r.pricePetrol, r.totalCost, r.notes ?? ''].join(',');
+      return [
+        dateStr,
+        r.kilometersPassed,
+        r.fuelType,
+        r.liters,
+        r.priceLpg,
+        r.pricePetrol,
+        r.totalCost,
+        r.notes ?? '',
+      ].join(',');
     });
     const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -227,7 +251,8 @@ export default function SettingsPage() {
                 <p className="text-sm font-medium text-gray-900">Import from CSV</p>
               </div>
               <p className="text-xs text-gray-400">
-                CSV columns: odometer, liters, price_lpg, price_petrol, notes (optional)
+                CSV columns (first row optional): kilometers passed, liters, price_lpg, price_petrol,
+                notes (optional). Import uses column order, not the header text.
               </p>
 
               <div className="grid grid-cols-2 gap-3">

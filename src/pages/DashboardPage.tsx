@@ -10,11 +10,14 @@ import { checkKmReminders, checkDateReminders, requestNotificationPermission } f
 import type { Reminder, FuelRecord } from '../types';
 import type { AddRecordInput } from '../hooks/useFuelRecords';
 
-function getReminderUrgency(r: Reminder, odometer?: number): 'ok' | 'warn' | 'danger' | 'inactive' {
+function getReminderUrgency(
+  r: Reminder,
+  kilometersPassed?: number,
+): 'ok' | 'warn' | 'danger' | 'inactive' {
   if (!r.isActive) return 'inactive';
-  if (r.type === 'km' && odometer !== undefined) {
+  if (r.type === 'km' && kilometersPassed !== undefined) {
     const nextDue = (r.lastServiceKm ?? 0) + (r.intervalKm ?? 0);
-    const remaining = nextDue - odometer;
+    const remaining = nextDue - kilometersPassed;
     const minThreshold = r.alertBeforeKm?.length ? Math.max(...r.alertBeforeKm) : 0;
     if (remaining <= 0) return 'danger';
     if (remaining <= minThreshold) return 'warn';
@@ -42,7 +45,7 @@ const urgencyDot: Record<string, string> = {
 };
 
 function LastFillCard({ record, prev }: { record: FuelRecord; prev?: FuelRecord }) {
-  const kmDriven = prev ? record.odometer - prev.odometer : null;
+  const kmDriven = prev ? record.kilometersPassed - prev.kilometersPassed : null;
   const consumption = kmDriven && kmDriven > 0 ? (record.liters / kmDriven) * 100 : null;
   const equivalent =
     consumption !== null && record.priceLpg > 0 && record.pricePetrol > 0
@@ -71,7 +74,7 @@ function LastFillCard({ record, prev }: { record: FuelRecord; prev?: FuelRecord 
         </span>
       </div>
       <p className="text-2xl font-bold text-gray-900 mb-0.5">
-        {record.odometer.toLocaleString()} km
+        {record.kilometersPassed.toLocaleString()} km
       </p>
       <p className="text-xs text-gray-400 mb-3">{format(record.date.toDate(), 'dd MMM yyyy')}</p>
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
@@ -111,7 +114,7 @@ export default function DashboardPage() {
   const petrolRecords = records.filter((r) => r.fuelType === 'petrol');
   const latestLpg = lpgRecords[0];
   const latestPetrol = petrolRecords[0];
-  const latestOdometer = records[0]?.odometer;
+  const latestKilometersPassed = records[0]?.kilometersPassed;
 
   useEffect(() => {
     if (reminders.length > 0) {
@@ -121,7 +124,7 @@ export default function DashboardPage() {
 
   async function handleAddRecord(data: AddRecordInput) {
     await addRecord(data);
-    await checkKmReminders(data.odometer, activeCar!.id, reminders, updateReminder);
+    await checkKmReminders(data.kilometersPassed, activeCar!.id, reminders, updateReminder);
     setShowForm(false);
   }
 
@@ -175,13 +178,13 @@ export default function DashboardPage() {
               .sort((a, b) => {
                 const order = { danger: 0, warn: 1, ok: 2, inactive: 3 };
                 return (
-                  order[getReminderUrgency(a, latestOdometer)] -
-                  order[getReminderUrgency(b, latestOdometer)]
+                  order[getReminderUrgency(a, latestKilometersPassed)] -
+                  order[getReminderUrgency(b, latestKilometersPassed)]
                 );
               })
               .slice(0, 4)
               .map((r) => {
-                const urg = getReminderUrgency(r, latestOdometer);
+                const urg = getReminderUrgency(r, latestKilometersPassed);
                 return (
                   <div key={r.id} className="flex items-center gap-2.5">
                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${urgencyDot[urg]}`} />
@@ -208,8 +211,8 @@ export default function DashboardPage() {
         <FuelRecordForm
           onClose={() => setShowForm(false)}
           onSubmit={handleAddRecord}
-          previousLpgOdometer={latestLpg?.odometer}
-          previousPetrolOdometer={latestPetrol?.odometer}
+          previousLpgKilometersPassed={latestLpg?.kilometersPassed}
+          previousPetrolKilometersPassed={latestPetrol?.kilometersPassed}
         />
       )}
     </div>

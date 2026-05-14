@@ -14,17 +14,21 @@ export default function CarForm({ onClose, onSubmit, initial }: Props) {
   const [make, setMake] = useState(initial?.make ?? '');
   const [model, setModel] = useState(initial?.model ?? '');
   const [year, setYear] = useState(initial?.year?.toString() ?? '');
-  const [odometer, setOdometer] = useState(initial?.initialOdometer?.toString() ?? '');
+  const [kilometersPassed, setKilometersPassed] = useState(
+    initial?.initialKilometersPassed?.toString() ?? '',
+  );
 
   const { loading: saving, error, trigger } = useAsyncAction(async () => {
     if (!name.trim()) throw new Error('Name is required');
-    if (!odometer || isNaN(Number(odometer))) throw new Error('Valid odometer reading is required');
+    if (!kilometersPassed || isNaN(Number(kilometersPassed))) {
+      throw new Error('Valid kilometers passed is required');
+    }
     await onSubmit({
       name: name.trim(),
       make: make.trim() || undefined,
       model: model.trim() || undefined,
       year: year ? Number(year) : undefined,
-      initialOdometer: Number(odometer),
+      initialKilometersPassed: Number(kilometersPassed),
     });
     onClose();
   });
@@ -101,12 +105,12 @@ export default function CarForm({ onClose, onSubmit, initial }: Props) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Current odometer (km) <span className="text-red-500">*</span>
+                Kilometers passed (km) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
-                value={odometer}
-                onChange={(e) => setOdometer(e.target.value)}
+                value={kilometersPassed}
+                onChange={(e) => setKilometersPassed(e.target.value)}
                 placeholder="45000"
                 min="0"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"

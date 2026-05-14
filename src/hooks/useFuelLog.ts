@@ -15,6 +15,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { fuelRecordFromFirestore } from '../lib/firestoreMappers';
 import { useAuth } from '../contexts/AuthContext';
 import { useAsync } from './use-async';
 import type { FuelRecord } from '../types';
@@ -43,7 +44,9 @@ export function useFuelLog(carId: string | null) {
       orderBy('date', 'desc'),
     );
     return onSnapshot(q, (snap) => {
-      setCurrentYearRecords(snap.docs.map((d) => ({ id: d.id, ...d.data() } as FuelRecord)));
+      setCurrentYearRecords(
+        snap.docs.map((d) => fuelRecordFromFirestore(d.id, d.data() as Record<string, unknown>)),
+      );
       setLoading(false);
     });
   }, [user, carId, currentYear]);
@@ -86,7 +89,9 @@ export function useFuelLog(carId: string | null) {
             orderBy('date', 'desc'),
           ),
         );
-        const recs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as FuelRecord));
+        const recs = snap.docs.map((d) =>
+          fuelRecordFromFirestore(d.id, d.data() as Record<string, unknown>),
+        );
         pastRecordsRef.current.set(year, recs);
         setPastRecords(new Map(pastRecordsRef.current));
       } finally {
@@ -121,7 +126,7 @@ export function useFuelLog(carId: string | null) {
         carId,
         userId: user.uid,
         date: Timestamp.fromDate(data.date),
-        odometer: data.odometer,
+        odometer: data.kilometersPassed,
         fuelType: data.fuelType,
         liters: data.liters,
         priceLpg: data.priceLpg,
@@ -138,6 +143,10 @@ export function useFuelLog(carId: string | null) {
     async (id: string, data: Partial<AddRecordInput>) => {
       if (!user) return;
       const payload: Record<string, unknown> = { ...data };
+      if (data.kilometersPassed !== undefined) {
+        payload.odometer = data.kilometersPassed;
+        delete payload.kilometersPassed;
+      }
       if (data.date) payload.date = Timestamp.fromDate(data.date);
       if (
         data.liters !== undefined ||
@@ -163,7 +172,9 @@ export function useFuelLog(carId: string | null) {
           if (idx >= 0) {
             const patched: FuelRecord = {
               ...recs[idx],
-              ...(data.odometer !== undefined && { odometer: data.odometer }),
+              ...(data.kilometersPassed !== undefined && {
+                kilometersPassed: data.kilometersPassed,
+              }),
               ...(data.fuelType !== undefined && { fuelType: data.fuelType }),
               ...(data.liters !== undefined && { liters: data.liters }),
               ...(data.priceLpg !== undefined && { priceLpg: data.priceLpg }),
